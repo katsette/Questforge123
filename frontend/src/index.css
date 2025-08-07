@@ -124,4 +124,21 @@
   .nav-link:not(.active) {
     @apply text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100;
   }
+
+  /* Fix sidebar scaling and responsive issues */
+  .sidebar-container {
+    @apply min-h-0 flex-1 overflow-hidden;
+  }
+
+  /* Ensure proper sidebar sizing on all devices */
+  @media (max-width: 1023px) {
+    .sidebar-mobile {
+      @apply w-64 max-w-xs;
+    }
+  }
+
+  /* Prevent horizontal scrolling issues */
+  .main-content {
+    @apply min-w-0 flex-1;
+  }
 }
