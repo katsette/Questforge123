@@ -4,6 +4,7 @@
 // This will help prevent package manager conflicts
 
 console.log('🔧 Configuring project to use npm...');
+console.log('📍 Current working directory:', process.cwd());
 
 // Check if yarn is being used
 if (process.env.npm_config_user_agent && process.env.npm_config_user_agent.includes('yarn')) {
@@ -15,15 +16,41 @@ if (process.env.npm_config_user_agent && process.env.npm_config_user_agent.inclu
   process.exit(1);
 }
 
-// Check for yarn.lock in project root
 const fs = require('fs');
 const path = require('path');
 
-const yarnLockPath = path.join(__dirname, 'yarn.lock');
-if (fs.existsSync(yarnLockPath)) {
-  console.log('⚠️  Found yarn.lock - removing to prevent conflicts...');
-  fs.unlinkSync(yarnLockPath);
-  console.log('✅ yarn.lock removed');
-}
+// Remove any yarn.lock files that might exist
+const locations = [
+  __dirname,                          // Project root
+  path.join(__dirname, 'frontend'),   // Frontend directory
+  path.join(__dirname, 'backend')     // Backend directory
+];
 
-console.log('✅ Project configured for npm usage');
+locations.forEach(dir => {
+  const yarnLockPath = path.join(dir, 'yarn.lock');
+  if (fs.existsSync(yarnLockPath)) {
+    console.log(`⚠️  Found yarn.lock in ${dir} - removing...`);
+    fs.unlinkSync(yarnLockPath);
+    console.log('✅ yarn.lock removed');
+  }
+});
+
+// Create/update .yarnrc to disable yarn
+const yarnrcPath = path.join(__dirname, '.yarnrc');
+fs.writeFileSync(yarnrcPath, '# Yarn disabled - use npm instead\ndisable-self-update-check true\n');
+console.log('✅ Created .yarnrc to disable yarn');
+
+// Ensure package-lock.json files exist
+const packageLockPaths = [
+  path.join(__dirname, 'package-lock.json'),
+  path.join(__dirname, 'frontend', 'package-lock.json'),
+  path.join(__dirname, 'backend', 'package-lock.json')
+];
+
+packageLockPaths.forEach(lockPath => {
+  if (fs.existsSync(lockPath)) {
+    console.log(`✅ Found npm lock file: ${lockPath}`);
+  }
+});
+
+console.log('✅ Project configured for npm usage - yarn disabled');
