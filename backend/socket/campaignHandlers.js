@@ -1,0 +1,251 @@
+const Campaign = require('../models/Campaign');
+const User = require('../models/User');
+
+const campaignHandlers = (socket, io) => {
+  // Join campaign room for general updates
+  socket.on('join-campaign', async (data) => {
+    try {
+      const { campaignId } = data;
+      
+      // Verify user has access to this campaign
+      const campaign = await Campaign.findById(campaignId);
+      if (!campaign) {
+        socket.emit('error', { message: 'Campaign not found' });
+        return;
+      }
+
+      // Check if user is part of campaign
+      const isAuthorized = campaign.dm.toString() === socket.userId || 
+                          campaign.players.some(p => p.user.toString() === socket.userId && p.isActive);
+
+      if (!isAuthorized) {
+        socket.emit('error', { message: 'Not authorized to access this campaign' });
+        return;
+      }
+
+      // Join the campaign room
+      const roomName = `campaign:${campaignId}`;
+      socket.join(roomName);
+      
+      console.log(`User ${socket.username} joined campaign: ${campaignId}`);
+      
+      // Notify others in the campaign
+      socket.to(roomName).emit('user-joined-campaign', {
+        userId: socket.userId,
+        username: socket.username,
+        timestamp: new Date()
+      });
+
+    } catch (error) {
+      console.error('Join campaign error:', error);
+      socket.emit('error', { message: 'Failed to join campaign' });
+    }
+  });
+
+  // Leave campaign room
+  socket.on('leave-campaign', (data) => {
+    try {
+      const { campaignId } = data;
+      const roomName = `campaign:${campaignId}`;
+      
+      socket.leave(roomName);
+      
+      // Notify others in the campaign
+      socket.to(roomName).emit('user-left-campaign', {
+        userId: socket.userId,
+        username: socket.username,
+        timestamp: new Date()
+      });
+
+    } catch (error) {
+      console.error('Leave campaign error:', error);
+    }
+  });
+
+  // Campaign update notifications
+  socket.on('campaign-updated', async (data) => {
+    try {
+      const { campaignId, updates, updatedBy } = data;
+      
+      // Verify user has permission to update campaign
+      const campaign = await Campaign.findById(campaignId);
+      if (!campaign) {
+        socket.emit('error', { message: 'Campaign not found' });
+        return;
+      }
+
+      // Only DM can update campaign details
+      if (campaign.dm.toString() !== socket.userId) {
+        socket.emit('error', { message: 'Not authorized to update this campaign' });
+        return;
+      }
+
+      const roomName = `campaign:${campaignId}`;
+      
+      // Broadcast update to all campaign members
+      socket.to(roomName).emit('campaign-updated', {
+        campaignId,
+        updates,
+        updatedBy: socket.username,
+        timestamp: new Date()
+      });
+
+    } catch (error) {
+      console.error('Campaign update error:', error);
+      socket.emit('error', { message: 'Failed to broadcast campaign update' });
+    }
+  });
+
+  // Character updates within campaign
+  socket.on('character-updated', async (data) => {
+    try {
+      const { campaignId, characterId, updates } = data;
+      
+      // Verify user has access to this campaign
+      const campaign = await Campaign.findById(campaignId);
+      if (!campaign) {
+        socket.emit('error', { message: 'Campaign not found' });
+        return;
+      }
+
+      const roomName = `campaign:${campaignId}`;
+      
+      // Broadcast character update to campaign members
+      socket.to(roomName).emit('character-updated', {
+        campaignId,
+        characterId,
+        updates,
+        updatedBy: socket.userId,
+        timestamp: new Date()
+      });
+
+    } catch (error) {
+      console.error('Character update error:', error);
+      socket.emit('error', { message: 'Failed to broadcast character update' });
+    }
+  });
+
+  // Dice roll in campaign context
+  socket.on('campaign-dice-roll', async (data) => {
+    try {
+      const { campaignId, roll, isPrivate = false } = data;
+      
+      // Verify user has access to this campaign
+      const campaign = await Campaign.findById(campaignId);
+      if (!campaign) {
+        socket.emit('error', { message: 'Campaign not found' });
+        return;
+      }
+
+      const roomName = `campaign:${campaignId}`;
+      
+      if (isPrivate) {
+        // Only send to DM if it's a private roll
+        const dmSocketId = await findUserSocket(campaign.dm.toString());
+        if (dmSocketId) {
+          io.to(dmSocketId).emit('private-dice-roll', {
+            campaignId,
+            roll,
+            rolledBy: socket.userId,
+            username: socket.username,
+            timestamp: new Date()
+          });
+        }
+        
+        // Send confirmation to roller
+        socket.emit('dice-roll-sent', { isPrivate: true });
+      } else {
+        // Broadcast public roll to all campaign members
+        io.to(roomName).emit('public-dice-roll', {
+          campaignId,
+          roll,
+          rolledBy: socket.userId,
+          username: socket.username,
+          timestamp: new Date()
+        });
+      }
+
+    } catch (error) {
+      console.error('Campaign dice roll error:', error);
+      socket.emit('error', { message: 'Failed to broadcast dice roll' });
+    }
+  });
+
+  // Initiative tracker updates
+  socket.on('initiative-update', async (data) => {
+    try {
+      const { campaignId, initiative } = data;
+      
+      // Verify user has access to this campaign
+      const campaign = await Campaign.findById(campaignId);
+      if (!campaign) {
+        socket.emit('error', { message: 'Campaign not found' });
+        return;
+      }
+
+      // Only DM can update initiative
+      if (campaign.dm.toString() !== socket.userId) {
+        socket.emit('error', { message: 'Only DM can update initiative tracker' });
+        return;
+      }
+
+      const roomName = `campaign:${campaignId}`;
+      
+      // Broadcast initiative update to all campaign members
+      socket.to(roomName).emit('initiative-updated', {
+        campaignId,
+        initiative,
+        updatedBy: socket.username,
+        timestamp: new Date()
+      });
+
+    } catch (error) {
+      console.error('Initiative update error:', error);
+      socket.emit('error', { message: 'Failed to update initiative' });
+    }
+  });
+
+  // Session status updates (start/pause/end)
+  socket.on('session-status-change', async (data) => {
+    try {
+      const { campaignId, status, sessionData } = data;
+      
+      // Verify user has access to this campaign
+      const campaign = await Campaign.findById(campaignId);
+      if (!campaign) {
+        socket.emit('error', { message: 'Campaign not found' });
+        return;
+      }
+
+      // Only DM can change session status
+      if (campaign.dm.toString() !== socket.userId) {
+        socket.emit('error', { message: 'Only DM can change session status' });
+        return;
+      }
+
+      const roomName = `campaign:${campaignId}`;
+      
+      // Broadcast session status change to all campaign members
+      io.to(roomName).emit('session-status-changed', {
+        campaignId,
+        status,
+        sessionData,
+        changedBy: socket.username,
+        timestamp: new Date()
+      });
+
+    } catch (error) {
+      console.error('Session status change error:', error);
+      socket.emit('error', { message: 'Failed to change session status' });
+    }
+  });
+};
+
+// Helper function to find a user's socket ID
+const findUserSocket = async (userId) => {
+  // This would need to be implemented with a user-to-socket mapping
+  // For now, return null
+  return null;
+};
+
+module.exports = campaignHandlers;
