@@ -75,7 +75,7 @@ export const menuSuggestion = onCallGenkit(
   },
   menuSuggestionFlow
 );
-```
+
 // `maxInstances` option in the function's options, e.g.
 // `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
 // NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
