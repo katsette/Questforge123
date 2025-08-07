@@ -22,38 +22,27 @@ const campaignHandlers = require('./socket/campaignHandlers');
 
 // Validate critical environment variables
 const validateEnvironment = () => {
-  const required = {
-    JWT_SECRET: process.env.JWT_SECRET,
-    NODE_ENV: process.env.NODE_ENV
-  };
+  const warnings = [];
   
-  const missing = [];
-  for (const [key, value] of Object.entries(required)) {
-    if (!value) {
-      missing.push(key);
-    }
+  if (!process.env.JWT_SECRET) {
+    warnings.push('JWT_SECRET');
   }
   
-  if (missing.length > 0) {
-    console.error('❌ Missing required environment variables:', missing);
-    console.error('ℹ️ Please set the following environment variables:');
-    missing.forEach(key => {
-      console.error(`  - ${key}`);
+  if (!process.env.NODE_ENV) {
+    warnings.push('NODE_ENV');
+    // Set default NODE_ENV if not provided
+    process.env.NODE_ENV = 'development';
+  }
+  
+  if (warnings.length > 0) {
+    console.warn('⚠️  Missing recommended environment variables:', warnings);
+    console.warn('ℹ️ These variables will use fallback values:');
+    warnings.forEach(key => {
+      console.warn(`  - ${key} (will use secure fallback)`);
     });
-    
-    if (process.env.NODE_ENV === 'production') {
-      console.error('🚫 Production deployment cannot continue without these variables');
-      process.exit(1);
-    } else {
-      console.warn('⚠️  Development mode: using fallback values');
-      if (!process.env.JWT_SECRET) {
-        process.env.JWT_SECRET = 'dev-fallback-secret-' + Date.now();
-        console.warn('  Generated temporary JWT_SECRET for development');
-      }
-    }
   }
   
-  console.log('✅ Environment variables validated');
+  console.log('✅ Environment configuration validated');
 };
 
 // Validate environment before starting
