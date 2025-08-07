@@ -12,10 +12,14 @@ services:
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: "7d"
+      - key: DATABASE_PATH
+        value: "/tmp/questforge.db"
       - key: RATE_LIMIT_WINDOW_MS
         value: "900000"
       - key: RATE_LIMIT_MAX_REQUESTS
         value: "100"
+      - key: FRONTEND_URL
+        value: "https://questforge123-1.onrender.com"
       - key: YARN_IGNORE_PATH
         value: "1"
       - key: npm_config_package_manager_strict

@@ -33,8 +33,20 @@ router.post('/register', [
     .withMessage('Password must be at least 6 characters long')
 ], async (req, res) => {
   try {
+    console.log('📝 Registration attempt:', { username: req.body.username, email: req.body.email });
+    
+    // Validate environment variables
+    if (!process.env.JWT_SECRET) {
+      console.error('❌ JWT_SECRET environment variable not set');
+      return res.status(500).json({
+        error: 'Server configuration error',
+        message: 'Authentication system not properly configured'
+      });
+    }
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Validation errors:', errors.array());
       return res.status(400).json({
         error: 'Validation failed',
         details: errors.array()
@@ -42,6 +54,7 @@ router.post('/register', [
     }
 
     const { username, email, password, displayName, firstName, lastName } = req.body;
+    console.log('📋 Processing registration data:', { username, email, displayName, firstName, lastName });
     
     // Use displayName as firstName if provided, or split displayName if it contains spaces
     let finalFirstName = firstName;

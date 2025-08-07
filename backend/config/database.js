@@ -7,9 +7,18 @@ let db;
 
 const connectDB = () => {
   try {
-    // Ensure database directory exists
-    const dbPath = process.env.DATABASE_PATH || './data/questforge.db';
+    // Database path configuration for different environments
+    let dbPath;
+    if (process.env.NODE_ENV === 'production') {
+      // In production (Render), use a path in the writable temp directory
+      dbPath = process.env.DATABASE_PATH || '/tmp/questforge.db';
+    } else {
+      // In development, use local data directory
+      dbPath = process.env.DATABASE_PATH || './data/questforge.db';
+    }
+    
     const dbDir = path.dirname(dbPath);
+    console.log('🗄️  Database configuration:', { NODE_ENV: process.env.NODE_ENV, dbPath, dbDir });
     
     if (!fs.existsSync(dbDir)) {
       console.log(`Creating database directory: ${dbDir}`);

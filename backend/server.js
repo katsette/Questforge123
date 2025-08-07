@@ -20,6 +20,45 @@ const socketAuth = require('./middleware/socketAuth');
 const chatHandlers = require('./socket/chatHandlers');
 const campaignHandlers = require('./socket/campaignHandlers');
 
+// Validate critical environment variables
+const validateEnvironment = () => {
+  const required = {
+    JWT_SECRET: process.env.JWT_SECRET,
+    NODE_ENV: process.env.NODE_ENV
+  };
+  
+  const missing = [];
+  for (const [key, value] of Object.entries(required)) {
+    if (!value) {
+      missing.push(key);
+    }
+  }
+  
+  if (missing.length > 0) {
+    console.error('❌ Missing required environment variables:', missing);
+    console.error('ℹ️ Please set the following environment variables:');
+    missing.forEach(key => {
+      console.error(`  - ${key}`);
+    });
+    
+    if (process.env.NODE_ENV === 'production') {
+      console.error('🚫 Production deployment cannot continue without these variables');
+      process.exit(1);
+    } else {
+      console.warn('⚠️  Development mode: using fallback values');
+      if (!process.env.JWT_SECRET) {
+        process.env.JWT_SECRET = 'dev-fallback-secret-' + Date.now();
+        console.warn('  Generated temporary JWT_SECRET for development');
+      }
+    }
+  }
+  
+  console.log('✅ Environment variables validated');
+};
+
+// Validate environment before starting
+validateEnvironment();
+
 const app = express();
 const server = http.createServer(app);
 
