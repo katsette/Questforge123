@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { socketService } from './services/socketService';
+
 
 // Layout components
 import Layout from './components/layout/Layout';
@@ -53,30 +53,14 @@ const PublicRoute = ({ children }) => {
 };
 
 // Socket connection manager
-const SocketManager = () => {
-  const { isAuthenticated, token } = useAuth();
 
-  useEffect(() => {
-    if (isAuthenticated && token) {
-      socketService.connect(token);
-    } else {
-      socketService.disconnect();
-    }
-
-    return () => {
-      socketService.disconnect();
-    };
-  }, [isAuthenticated, token]);
-
-  return null;
-};
 
 function App() {
   return (
     <div className="App min-h-screen bg-gray-50 dark:bg-gray-900">
       <AuthProvider>
         <Router>
-          <SocketManager />
+          
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<LandingPage />} />
