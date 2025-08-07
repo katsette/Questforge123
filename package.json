@@ -8,13 +8,13 @@
   },
   "scripts": {
     "test": "node test-full-app.js",
-    "build": "npm install && npm run build:frontend && npm run build:backend",
+    "build": "node use-npm.js && npm install && npm run build:frontend && npm run build:backend",
     "build:frontend": "cd frontend && npm install && npm run build",
     "build:backend": "cd backend && npm install",
     "start": "node start.js",
     "heroku-postbuild": "npm run build",
-    "yarn:start": "cd backend && npm start",
-    "yarn:build": "npm run build"
+    "prebuild": "echo 'Starting QuestForge build process...' && pwd && ls -la",
+    "postbuild": "echo 'Build complete! Checking frontend build...' && ls -la frontend/build/index.html || echo 'Frontend build missing!'"
   },
   "repository": {
     "type": "git",

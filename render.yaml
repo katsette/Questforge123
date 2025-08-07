@@ -3,32 +3,8 @@ services:
     name: questforge
     env: node
     plan: free
-    buildCommand: |
-      echo "🏗️ Building QuestForge on Render..."
-      echo "📍 Current directory: $PWD"
-      echo "📂 Files available:"
-      ls -la
-      echo "🔧 Disabling Yarn and configuring npm..."
-      export YARN_IGNORE_PATH=1
-      export npm_config_package_manager_strict=false
-      rm -f yarn.lock frontend/yarn.lock backend/yarn.lock
-      echo "# Yarn disabled - use npm instead" > .yarnrc
-      node use-npm.js
-      echo "🔍 Package manager verification:"
-      which npm && echo "npm available" || echo "npm not found"
-      npm --version
-      echo "📦 Installing root dependencies with npm..."
-      npm install --no-package-lock-warning
-      echo "🎨 Building frontend with npm..."
-      cd frontend && npm install --no-package-lock-warning && npm run build && cd ..
-      echo "🔧 Installing backend dependencies with npm..."
-      cd backend && npm install --no-package-lock-warning && cd ..
-      echo "✅ Verifying build results..."
-      ls -la frontend/build/index.html && echo "Frontend build SUCCESS!" || echo "Frontend build FAILED!"
-      echo "📂 Frontend build directory contents:"
-      ls -la frontend/build/ || echo "Build directory not found"
-      echo "🚀 Build process complete!"
-    startCommand: "node start.js"
+    buildCommand: "npm run build"
+    startCommand: "npm start"
     envVars:
       - key: NODE_ENV
         value: production
