@@ -1,5 +1,4 @@
 const Campaign = require('../models/Campaign');
-const User = require('../models/User');
 
 const campaignHandlers = (socket, io) => {
   // Join campaign room for general updates
@@ -15,8 +14,7 @@ const campaignHandlers = (socket, io) => {
       }
 
       // Check if user is part of campaign
-      const isAuthorized = campaign.dm.toString() === socket.userId || 
-                          campaign.players.some(p => p.user.toString() === socket.userId && p.isActive);
+      const isAuthorized = await Campaign.isMember(campaignId, socket.userId);
 
       if (!isAuthorized) {
         socket.emit('error', { message: 'Not authorized to access this campaign' });
@@ -27,12 +25,11 @@ const campaignHandlers = (socket, io) => {
       const roomName = `campaign:${campaignId}`;
       socket.join(roomName);
       
-      console.log(`User ${socket.username} joined campaign: ${campaignId}`);
+      console.log(`User ${socket.userId} joined campaign: ${campaignId}`);
       
       // Notify others in the campaign
       socket.to(roomName).emit('user-joined-campaign', {
         userId: socket.userId,
-        username: socket.username,
         timestamp: new Date()
       });
 
@@ -53,7 +50,6 @@ const campaignHandlers = (socket, io) => {
       // Notify others in the campaign
       socket.to(roomName).emit('user-left-campaign', {
         userId: socket.userId,
-        username: socket.username,
         timestamp: new Date()
       });
 
@@ -75,7 +71,7 @@ const campaignHandlers = (socket, io) => {
       }
 
       // Only DM can update campaign details
-      if (campaign.dm.toString() !== socket.userId) {
+      if (campaign.dmId !== socket.userId) {
         socket.emit('error', { message: 'Not authorized to update this campaign' });
         return;
       }
@@ -86,7 +82,7 @@ const campaignHandlers = (socket, io) => {
       socket.to(roomName).emit('campaign-updated', {
         campaignId,
         updates,
-        updatedBy: socket.username,
+        updatedBy: socket.userId,
         timestamp: new Date()
       });
 
@@ -141,26 +137,15 @@ const campaignHandlers = (socket, io) => {
       
       if (isPrivate) {
         // Only send to GM if it's a private roll
-        const dmSocketId = await findUserSocket(campaign.dm.toString());
-        if (dmSocketId) {
-          io.to(dmSocketId).emit('private-dice-roll', {
-            campaignId,
-            roll,
-            rolledBy: socket.userId,
-            username: socket.username,
-            timestamp: new Date()
-          });
-        }
-        
-        // Send confirmation to roller
-        socket.emit('dice-roll-sent', { isPrivate: true });
+        // This would need a mechanism to map userId to socketId, which is not implemented here.
+        // For now, private rolls will not be delivered.
+        socket.emit('dice-roll-sent', { isPrivate: true, message: 'Private rolls not fully supported yet.' });
       } else {
         // Broadcast public roll to all campaign members
         io.to(roomName).emit('public-dice-roll', {
           campaignId,
           roll,
           rolledBy: socket.userId,
-          username: socket.username,
           timestamp: new Date()
         });
       }
@@ -184,7 +169,7 @@ const campaignHandlers = (socket, io) => {
       }
 
       // Only GM can update initiative
-      if (campaign.dm.toString() !== socket.userId) {
+      if (campaign.dmId !== socket.userId) {
         socket.emit('error', { message: 'Only GM can update initiative tracker' });
         return;
       }
@@ -195,7 +180,7 @@ const campaignHandlers = (socket, io) => {
       socket.to(roomName).emit('initiative-updated', {
         campaignId,
         initiative,
-        updatedBy: socket.username,
+        updatedBy: socket.userId,
         timestamp: new Date()
       });
 
@@ -218,7 +203,7 @@ const campaignHandlers = (socket, io) => {
       }
 
       // Only GM can change session status
-      if (campaign.dm.toString() !== socket.userId) {
+      if (campaign.dmId !== socket.userId) {
         socket.emit('error', { message: 'Only GM can change session status' });
         return;
       }
@@ -230,7 +215,7 @@ const campaignHandlers = (socket, io) => {
         campaignId,
         status,
         sessionData,
-        changedBy: socket.username,
+        changedBy: socket.userId,
         timestamp: new Date()
       });
 
@@ -239,13 +224,6 @@ const campaignHandlers = (socket, io) => {
       socket.emit('error', { message: 'Failed to change session status' });
     }
   });
-};
-
-// Helper function to find a user's socket ID
-const findUserSocket = async (userId) => {
-  // This would need to be implemented with a user-to-socket mapping
-  // For now, return null
-  return null;
 };
 
 module.exports = campaignHandlers;

@@ -1,8 +1,7 @@
-const { getDB } = require('../config/database');
+const { firestore } = require('firebase-admin');
 
 class Message {
-  static create(messageData) {
-    const db = getDB();
+  static async create(messageData) {
     const { 
       content, 
       type = 'text', 
@@ -12,155 +11,106 @@ class Message {
       isSystemMessage = false 
     } = messageData;
     
-    const stmt = db.prepare(`
-      INSERT INTO messages (content, type, userId, campaignId, characterId, isSystemMessage)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    
-    const result = stmt.run(content, type, userId, campaignId, characterId, isSystemMessage ? 1 : 0);
-    
-    return this.findById(result.lastInsertRowid);
+    const messagesRef = firestore().collection('campaigns').doc(campaignId).collection('messages');
+    const newMessageRef = await messagesRef.add({
+      content,
+      type,
+      userId,
+      campaignId,
+      characterId,
+      isSystemMessage,
+      createdAt: new Date(),
+    });
+
+    const newMessage = await newMessageRef.get();
+    return { id: newMessage.id, ...newMessage.data() };
   }
 
-  static findById(id) {
-    const db = getDB();
-    const stmt = db.prepare(`
-      SELECT m.*, u.username, u.firstName, u.lastName, u.avatar,
-             ch.name as characterName, c.name as campaignName
-      FROM messages m
-      JOIN users u ON m.userId = u.id
-      JOIN campaigns c ON m.campaignId = c.id
-      LEFT JOIN characters ch ON m.characterId = ch.id
-      WHERE m.id = ?
-    `);
-    return stmt.get(id);
+  static async findById(id, campaignId) {
+    const messageRef = firestore().collection('campaigns').doc(campaignId).collection('messages').doc(id);
+    const message = await messageRef.get();
+    if (!message.exists) {
+      return null;
+    }
+    return { id: message.id, ...message.data() };
   }
 
-  static findByCampaign(campaignId, limit = 50, offset = 0) {
-    const db = getDB();
-    const stmt = db.prepare(`
-      SELECT m.*, u.username, u.firstName, u.lastName, u.avatar,
-             ch.name as characterName
-      FROM messages m
-      JOIN users u ON m.userId = u.id
-      LEFT JOIN characters ch ON m.characterId = ch.id
-      WHERE m.campaignId = ?
-      ORDER BY m.createdAt DESC
-      LIMIT ? OFFSET ?
-    `);
-    return stmt.all(campaignId, limit, offset).reverse();
+  static async findByCampaign(campaignId, limit = 50, offset = 0) {
+    const messagesRef = firestore().collection('campaigns').doc(campaignId).collection('messages');
+    const snapshot = await messagesRef.orderBy('createdAt', 'desc').limit(limit).offset(offset).get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
   }
 
-  static getRecentMessages(campaignId, limit = 50) {
+  static async getRecentMessages(campaignId, limit = 50) {
     return this.findByCampaign(campaignId, limit, 0);
   }
 
-  static findByUser(userId, limit = 50) {
-    const db = getDB();
-    const stmt = db.prepare(`
-      SELECT m.*, u.username, u.firstName, u.lastName, u.avatar,
-             ch.name as characterName, c.name as campaignName
-      FROM messages m
-      JOIN users u ON m.userId = u.id
-      JOIN campaigns c ON m.campaignId = c.id
-      LEFT JOIN characters ch ON m.characterId = ch.id
-      WHERE m.userId = ?
-      ORDER BY m.createdAt DESC
-      LIMIT ?
-    `);
-    return stmt.all(userId, limit);
+  static async findByUser(userId, limit = 50) {
+    const messagesRef = firestore().collectionGroup('messages');
+    const snapshot = await messagesRef.where('userId', '==', userId).orderBy('createdAt', 'desc').limit(limit).get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
-  static updateById(id, updateData) {
-    const db = getDB();
-    const fields = [];
-    const values = [];
-    
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(updateData[key]);
-      }
+  static async updateById(id, campaignId, updateData) {
+    const messageRef = firestore().collection('campaigns').doc(campaignId).collection('messages').doc(id);
+    await messageRef.update(updateData);
+    return this.findById(id, campaignId);
+  }
+
+  static async deleteById(id, campaignId) {
+    const messageRef = firestore().collection('campaigns').doc(campaignId).collection('messages').doc(id);
+    await messageRef.delete();
+    return true;
+  }
+
+  static async deleteByCampaign(campaignId) {
+    const messagesRef = firestore().collection('campaigns').doc(campaignId).collection('messages');
+    const snapshot = await messagesRef.get();
+    const batch = firestore().batch();
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
     });
-    
-    if (fields.length === 0) return this.findById(id);
-    
-    values.push(new Date().toISOString()); // updatedAt (not in schema but good practice)
-    values.push(id);
-    
-    const stmt = db.prepare(`
-      UPDATE messages 
-      SET ${fields.join(', ')}
-      WHERE id = ?
-    `);
-    
-    stmt.run(...values.slice(0, -1), id); // Remove updatedAt since it's not in the schema
-    return this.findById(id);
+    await batch.commit();
+    return snapshot.size;
   }
 
-  static deleteById(id) {
-    const db = getDB();
-    const stmt = db.prepare('DELETE FROM messages WHERE id = ?');
-    const result = stmt.run(id);
-    return result.changes > 0;
-  }
-
-  // Delete all messages in a campaign
-  static deleteByCampaign(campaignId) {
-    const db = getDB();
-    const stmt = db.prepare('DELETE FROM messages WHERE campaignId = ?');
-    const result = stmt.run(campaignId);
-    return result.changes;
-  }
-
-  // Check if user owns message
-  static isOwner(messageId, userId) {
-    const db = getDB();
-    const stmt = db.prepare('SELECT userId FROM messages WHERE id = ?');
-    const message = stmt.get(messageId);
+  static async isOwner(messageId, campaignId, userId) {
+    const message = await this.findById(messageId, campaignId);
     return message && message.userId === userId;
   }
 
-  // Get message count for campaign
-  static getCountByCampaign(campaignId) {
-    const db = getDB();
-    const stmt = db.prepare('SELECT COUNT(*) as count FROM messages WHERE campaignId = ?');
-    const result = stmt.get(campaignId);
-    return result.count;
+  static async getCountByCampaign(campaignId) {
+    const messagesRef = firestore().collection('campaigns').doc(campaignId).collection('messages');
+    const snapshot = await messagesRef.get();
+    return snapshot.size;
   }
 
-  // Search messages in campaign
-  static searchInCampaign(campaignId, searchTerm, limit = 20) {
-    const db = getDB();
-    const stmt = db.prepare(`
-      SELECT m.*, u.username, u.firstName, u.lastName, u.avatar,
-             ch.name as characterName
-      FROM messages m
-      JOIN users u ON m.userId = u.id
-      LEFT JOIN characters ch ON m.characterId = ch.id
-      WHERE m.campaignId = ? AND m.content LIKE ?
-      ORDER BY m.createdAt DESC
-      LIMIT ?
-    `);
-    return stmt.all(campaignId, `%${searchTerm}%`, limit);
+  static async searchInCampaign(campaignId, searchTerm, limit = 20) {
+    const messagesRef = firestore().collection('campaigns').doc(campaignId).collection('messages');
+    const snapshot = await messagesRef
+      .where('content', '>=', searchTerm)
+      .where('content', '<=', searchTerm + '\uf8ff')
+      .orderBy('content')
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
-  // Create system message
-  static createSystemMessage(campaignId, content) {
+  static async createSystemMessage(campaignId, content) {
     return this.create({
       content,
       type: 'system',
-      userId: null, // System messages don't have a user
+      userId: null,
       campaignId,
-      isSystemMessage: true
+      isSystemMessage: true,
     });
   }
 
-  // Get messages with pagination
-  static getPaginated(campaignId, page = 1, limit = 50) {
+  static async getPaginated(campaignId, page = 1, limit = 50) {
     const offset = (page - 1) * limit;
-    const messages = this.findByCampaign(campaignId, limit, offset);
-    const totalCount = this.getCountByCampaign(campaignId);
+    const messages = await this.findByCampaign(campaignId, limit, offset);
+    const totalCount = await this.getCountByCampaign(campaignId);
     
     return {
       messages,
@@ -169,8 +119,8 @@ class Message {
         totalPages: Math.ceil(totalCount / limit),
         totalCount,
         hasNext: offset + limit < totalCount,
-        hasPrev: page > 1
-      }
+        hasPrev: page > 1,
+      },
     };
   }
 }

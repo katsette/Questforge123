@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchCampaigns, createCampaign, joinCampaign, leaveCampaign } from '../services/campaignService';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -26,33 +27,17 @@ const CampaignsPage = () => {
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'my'
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const fetchCampaigns = async (type = 'all') => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/campaigns?type=${type}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        setCampaigns(data.campaigns);
-        setFilteredCampaigns(data.campaigns);
-      } else {
-        setError(data.error || 'Failed to fetch campaigns');
-      }
-    } catch (err) {
-      console.error('Error fetching campaigns:', err);
-      setError('Failed to load campaigns');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchCampaigns(filterTab);
-  }, [filterTab]);
+    setLoading(true);
+    setError(null);
+    const unsubscribe = fetchCampaigns(user?.uid, filterTab, (fetchedCampaigns) => {
+      setCampaigns(fetchedCampaigns);
+      setFilteredCampaigns(fetchedCampaigns);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [filterTab, user]);
 
   useEffect(() => {
     const filtered = campaigns.filter(campaign => 
@@ -65,22 +50,9 @@ const CampaignsPage = () => {
 
   const handleCreateCampaign = async (campaignData) => {
     try {
-      const response = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(campaignData)
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        setShowCreateModal(false);
-        fetchCampaigns(filterTab);
-      } else {
-        throw new Error(data.error || 'Failed to create campaign');
-      }
+      const newCampaign = await createCampaign({ ...campaignData, dmId: user.uid, dmUsername: user.email });
+      setShowCreateModal(false);
+      // Campaigns will be re-fetched by the useEffect due to Firebase listener
     } catch (err) {
       console.error('Error creating campaign:', err);
       throw err; // Re-throw to let modal handle error display
@@ -89,19 +61,8 @@ const CampaignsPage = () => {
 
   const handleJoinCampaign = async (campaignId) => {
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}/join`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        fetchCampaigns(filterTab);
-      } else {
-        alert(data.error || 'Failed to join campaign');
-      }
+      await joinCampaign(campaignId, user.uid);
+      // Campaigns will be re-fetched by the useEffect due to Firebase listener
     } catch (err) {
       console.error('Error joining campaign:', err);
       alert('Failed to join campaign');
@@ -114,19 +75,8 @@ const CampaignsPage = () => {
     }
     
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}/leave`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        fetchCampaigns(filterTab);
-      } else {
-        alert(data.error || 'Failed to leave campaign');
-      }
+      await leaveCampaign(campaignId, user.uid);
+      // Campaigns will be re-fetched by the useEffect due to Firebase listener
     } catch (err) {
       console.error('Error leaving campaign:', err);
       alert('Failed to leave campaign');

@@ -70,8 +70,8 @@ export const evaluateMenuSuggestion = defineFlow(
       menuName: z.string(),
     }),
     outputSchema: z.string(),
-  },
-  async ({ subject, menuName }) => {
+  }, 
+  async ({ subject, menuName }: { subject: string; menuName: string }) => {
     const llmResponse = await generate({
       model: geminiPro,
       prompt: `Is "${menuName}" a good name for a menu item for a ${subject} themed restaurant?`,
@@ -91,7 +91,7 @@ export const simpleRagFlow = defineFlow(
     outputSchema: z.string(),
   },
   async (query: any) => {
-    const ragResponse = await runFlow(menuSuggestionFlow, query);
-    return ragResponse;
+    const ragResponse = await runFlow(menuSuggestionFlow, { input: query });
+    return ragResponse.output;
   }
 );

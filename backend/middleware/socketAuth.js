@@ -1,10 +1,7 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const { getJWTSecret } = require('../utils/jwtSecret');
+const admin = require('firebase-admin');
 
 const socketAuth = async (socket, next) => {
   try {
-    // Get token from auth header or query parameter
     const token = socket.handshake.auth?.token || 
                   socket.handshake.headers?.authorization?.replace('Bearer ', '') ||
                   socket.handshake.query?.token;
@@ -13,36 +10,22 @@ const socketAuth = async (socket, next) => {
       return next(new Error('Authentication error: No token provided'));
     }
 
-    // Verify JWT token using the same secret system
-    const { secret } = getJWTSecret();
-    const decoded = jwt.verify(token, secret);
-    
-    // Get user from database (SQLite version)
-    const user = User.findById(decoded.id);
-    
-    if (!user) {
-      return next(new Error('Authentication error: User not found'));
-    }
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    socket.userId = decodedToken.uid;
+    // Optionally, fetch user details from Firestore if needed for socket context
+    // socket.user = await admin.firestore().collection('users').doc(decodedToken.uid).get();
 
-    // Note: We don't track online status in SQLite for simplicity
-    // This could be added later with a separate online_users table if needed
-    
-    // Attach user info to socket (SQLite uses id instead of _id)
-    socket.userId = user.id;
-    socket.username = user.username;
-    socket.user = User.toJSON(user); // Remove password field
-
-    console.log(`Socket authenticated for user: ${user.username} (${user.id})`);
+    console.log(`Socket authenticated for user: ${socket.userId}`);
     next();
     
   } catch (error) {
     console.error('Socket authentication error:', error);
     
-    if (error.name === 'TokenExpiredError') {
+    if (error.code === 'auth/id-token-expired') {
       return next(new Error('Authentication error: Token expired'));
     }
     
-    if (error.name === 'JsonWebTokenError') {
+    if (error.code === 'auth/argument-error' || error.code === 'auth/invalid-id-token') {
       return next(new Error('Authentication error: Invalid token'));
     }
     

@@ -8,7 +8,7 @@ const router = express.Router();
 // GET /api/characters - Get user's characters
 router.get('/', auth, async (req, res) => {
   try {
-    const characters = Character.findByUser(req.user.id);
+    const characters = await Character.findByUser(req.user.uid);
     res.json({
       characters,
       success: true
@@ -56,15 +56,14 @@ router.post('/', auth, async (req, res) => {
     
     // If assigning to campaign, verify user has access
     if (campaignId) {
-      const campaign = Campaign.findById(campaignId);
+      const campaign = await Campaign.findById(campaignId);
       if (!campaign) {
         return res.status(404).json({
           error: 'Campaign not found'
         });
       }
       
-      const isAuthorized = campaign.dm === req.user.id || 
-                          campaign.players.some(p => p.user === req.user.id && p.isActive);
+      const isAuthorized = await Campaign.isMember(campaignId, req.user.uid);
       
       if (!isAuthorized) {
         return res.status(403).json({
@@ -80,11 +79,11 @@ router.post('/', auth, async (req, res) => {
       race,
       background,
       stats,
-      userId: req.user.id,
+      userId: req.user.uid,
       campaignId
     };
     
-    const character = Character.create(characterData);
+    const character = await Character.create(characterData);
     
     res.status(201).json({
       character,
@@ -102,7 +101,7 @@ router.post('/', auth, async (req, res) => {
 // GET /api/characters/:id - Get character details
 router.get('/:id', auth, async (req, res) => {
   try {
-    const character = Character.findById(req.params.id);
+    const character = await Character.findById(req.params.id);
     
     if (!character) {
       return res.status(404).json({
@@ -111,15 +110,14 @@ router.get('/:id', auth, async (req, res) => {
     }
     
     // Check if user has access to this character
-    const isOwner = character.userId === req.user.id;
+    const isOwner = character.userId === req.user.uid;
     
     // If not owner, check if user has access through campaign
     let hasAccess = isOwner;
     if (!hasAccess && character.campaignId) {
-      const campaign = Campaign.findById(character.campaignId);
-      if (campaign) {
-        hasAccess = campaign.dm === req.user.id || 
-                   campaign.players.some(p => p.user === req.user.id && p.isActive);
+      const isMember = await Campaign.isMember(character.campaignId, req.user.uid);
+      if (isMember) {
+        hasAccess = true;
       }
     }
     
@@ -146,7 +144,7 @@ router.get('/:id', auth, async (req, res) => {
 // PUT /api/characters/:id - Update character
 router.put('/:id', auth, async (req, res) => {
   try {
-    const character = Character.findById(req.params.id);
+    const character = await Character.findById(req.params.id);
     
     if (!character) {
       return res.status(404).json({
@@ -155,7 +153,7 @@ router.put('/:id', auth, async (req, res) => {
     }
     
     // Only owner can update character
-    if (character.userId !== req.user.id) {
+    if (character.userId !== req.user.uid) {
       return res.status(403).json({
         error: 'Not authorized to update this character'
       });
@@ -190,7 +188,7 @@ router.put('/:id', auth, async (req, res) => {
     if (background !== undefined) updateData.background = background;
     if (stats !== undefined) updateData.stats = stats;
     
-    const updatedCharacter = Character.updateById(req.params.id, updateData);
+    const updatedCharacter = await Character.updateById(req.params.id, updateData);
     
     res.json({
       character: updatedCharacter,
@@ -208,7 +206,7 @@ router.put('/:id', auth, async (req, res) => {
 // DELETE /api/characters/:id - Delete character
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const character = Character.findById(req.params.id);
+    const character = await Character.findById(req.params.id);
     
     if (!character) {
       return res.status(404).json({
@@ -217,19 +215,13 @@ router.delete('/:id', auth, async (req, res) => {
     }
     
     // Only owner can delete character
-    if (character.userId !== req.user.id) {
+    if (character.userId !== req.user.uid) {
       return res.status(403).json({
         error: 'Not authorized to delete this character'
       });
     }
     
-    const deleted = Character.deleteById(req.params.id);
-    
-    if (!deleted) {
-      return res.status(500).json({
-        error: 'Failed to delete character'
-      });
-    }
+    await Character.deleteById(req.params.id);
     
     res.json({
       success: true,
@@ -247,7 +239,7 @@ router.delete('/:id', auth, async (req, res) => {
 // POST /api/characters/:id/level-up - Level up character
 router.post('/:id/level-up', auth, async (req, res) => {
   try {
-    const character = Character.findById(req.params.id);
+    const character = await Character.findById(req.params.id);
     
     if (!character) {
       return res.status(404).json({
@@ -256,7 +248,7 @@ router.post('/:id/level-up', auth, async (req, res) => {
     }
     
     // Only owner can level up character
-    if (character.userId !== req.user.id) {
+    if (character.userId !== req.user.uid) {
       return res.status(403).json({
         error: 'Not authorized to level up this character'
       });
@@ -268,7 +260,7 @@ router.post('/:id/level-up', auth, async (req, res) => {
       });
     }
     
-    const leveledCharacter = Character.levelUp(req.params.id);
+    const leveledCharacter = await Character.levelUp(req.params.id);
     
     res.json({
       character: leveledCharacter,
@@ -289,7 +281,7 @@ router.post('/:id/assign-campaign', auth, async (req, res) => {
   try {
     const { campaignId } = req.body;
     
-    const character = Character.findById(req.params.id);
+    const character = await Character.findById(req.params.id);
     if (!character) {
       return res.status(404).json({
         error: 'Character not found'
@@ -297,22 +289,21 @@ router.post('/:id/assign-campaign', auth, async (req, res) => {
     }
     
     // Only owner can assign character
-    if (character.userId !== req.user.id) {
+    if (character.userId !== req.user.uid) {
       return res.status(403).json({
         error: 'Not authorized to assign this character'
       });
     }
     
     // Verify campaign exists and user has access
-    const campaign = Campaign.findById(campaignId);
+    const campaign = await Campaign.findById(campaignId);
     if (!campaign) {
       return res.status(404).json({
         error: 'Campaign not found'
       });
     }
     
-    const isAuthorized = campaign.dm === req.user.id || 
-                        campaign.players.some(p => p.user === req.user.id && p.isActive);
+    const isAuthorized = await Campaign.isMember(campaignId, req.user.uid);
     
     if (!isAuthorized) {
       return res.status(403).json({
@@ -320,7 +311,7 @@ router.post('/:id/assign-campaign', auth, async (req, res) => {
       });
     }
     
-    const updatedCharacter = Character.assignToCampaign(req.params.id, campaignId);
+    const updatedCharacter = await Character.assignToCampaign(req.params.id, campaignId);
     
     res.json({
       character: updatedCharacter,
@@ -339,7 +330,7 @@ router.post('/:id/assign-campaign', auth, async (req, res) => {
 // POST /api/characters/:id/remove-campaign - Remove character from campaign
 router.post('/:id/remove-campaign', auth, async (req, res) => {
   try {
-    const character = Character.findById(req.params.id);
+    const character = await Character.findById(req.params.id);
     
     if (!character) {
       return res.status(404).json({
@@ -348,13 +339,13 @@ router.post('/:id/remove-campaign', auth, async (req, res) => {
     }
     
     // Only owner can remove character
-    if (character.userId !== req.user.id) {
+    if (character.userId !== req.user.uid) {
       return res.status(403).json({
         error: 'Not authorized to modify this character'
       });
     }
     
-    const updatedCharacter = Character.removeFromCampaign(req.params.id);
+    const updatedCharacter = await Character.removeFromCampaign(req.params.id);
     
     res.json({
       character: updatedCharacter,

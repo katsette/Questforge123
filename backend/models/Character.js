@@ -1,8 +1,7 @@
-const { getDB } = require('../config/database');
+const { firestore } = require('firebase-admin');
 
 class Character {
-  static create(characterData) {
-    const db = getDB();
+  static async create(characterData) {
     const { 
       name, 
       class: characterClass, 
@@ -14,178 +13,87 @@ class Character {
       campaignId = null 
     } = characterData;
     
-    const statsJson = stats ? JSON.stringify(stats) : null;
-    
-    const stmt = db.prepare(`
-      INSERT INTO characters (name, class, level, race, background, stats, userId, campaignId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    
-    const result = stmt.run(name, characterClass, level, race, background, statsJson, userId, campaignId);
-    
-    return this.findById(result.lastInsertRowid);
+    const charactersRef = firestore().collection('characters');
+    const newCharacterRef = await charactersRef.add({
+      name,
+      class: characterClass,
+      level,
+      race,
+      background,
+      stats,
+      userId,
+      campaignId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const newCharacter = await newCharacterRef.get();
+    return { id: newCharacter.id, ...newCharacter.data() };
   }
 
-  static findById(id) {
-    const db = getDB();
-    const stmt = db.prepare(`
-      SELECT ch.*, u.username as playerUsername, c.name as campaignName
-      FROM characters ch
-      JOIN users u ON ch.userId = u.id
-      LEFT JOIN campaigns c ON ch.campaignId = c.id
-      WHERE ch.id = ?
-    `);
-    const character = stmt.get(id);
-    
-    if (character && character.stats) {
-      try {
-        character.stats = JSON.parse(character.stats);
-      } catch (e) {
-        character.stats = null;
-      }
+  static async findById(id) {
+    const characterRef = firestore().collection('characters').doc(id);
+    const character = await characterRef.get();
+    if (!character.exists) {
+      return null;
     }
-    
-    return character;
+    return { id: character.id, ...character.data() };
   }
 
-  static findAll() {
-    const db = getDB();
-    const stmt = db.prepare(`
-      SELECT ch.*, u.username as playerUsername, c.name as campaignName
-      FROM characters ch
-      JOIN users u ON ch.userId = u.id
-      LEFT JOIN campaigns c ON ch.campaignId = c.id
-      ORDER BY ch.createdAt DESC
-    `);
-    const characters = stmt.all();
-    
-    return characters.map(character => {
-      if (character.stats) {
-        try {
-          character.stats = JSON.parse(character.stats);
-        } catch (e) {
-          character.stats = null;
-        }
-      }
-      return character;
-    });
+  static async findAll() {
+    const charactersRef = firestore().collection('characters');
+    const snapshot = await charactersRef.orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
-  static findByUser(userId) {
-    const db = getDB();
-    const stmt = db.prepare(`
-      SELECT ch.*, u.username as playerUsername, c.name as campaignName
-      FROM characters ch
-      JOIN users u ON ch.userId = u.id
-      LEFT JOIN campaigns c ON ch.campaignId = c.id
-      WHERE ch.userId = ?
-      ORDER BY ch.createdAt DESC
-    `);
-    const characters = stmt.all(userId);
-    
-    return characters.map(character => {
-      if (character.stats) {
-        try {
-          character.stats = JSON.parse(character.stats);
-        } catch (e) {
-          character.stats = null;
-        }
-      }
-      return character;
-    });
+  static async findByUser(userId) {
+    const charactersRef = firestore().collection('characters');
+    const snapshot = await charactersRef.where('userId', '==', userId).orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
-  static findByCampaign(campaignId) {
-    const db = getDB();
-    const stmt = db.prepare(`
-      SELECT ch.*, u.username as playerUsername, c.name as campaignName
-      FROM characters ch
-      JOIN users u ON ch.userId = u.id
-      LEFT JOIN campaigns c ON ch.campaignId = c.id
-      WHERE ch.campaignId = ?
-      ORDER BY ch.createdAt ASC
-    `);
-    const characters = stmt.all(campaignId);
-    
-    return characters.map(character => {
-      if (character.stats) {
-        try {
-          character.stats = JSON.parse(character.stats);
-        } catch (e) {
-          character.stats = null;
-        }
-      }
-      return character;
-    });
+  static async findByCampaign(campaignId) {
+    const charactersRef = firestore().collection('characters');
+    const snapshot = await charactersRef.where('campaignId', '==', campaignId).orderBy('createdAt', 'asc').get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
-  static updateById(id, updateData) {
-    const db = getDB();
-    const fields = [];
-    const values = [];
-    
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] !== undefined) {
-        if (key === 'stats') {
-          fields.push(`${key} = ?`);
-          values.push(typeof updateData[key] === 'object' ? JSON.stringify(updateData[key]) : updateData[key]);
-        } else {
-          fields.push(`${key} = ?`);
-          values.push(updateData[key]);
-        }
-      }
+  static async updateById(id, updateData) {
+    const characterRef = firestore().collection('characters').doc(id);
+    await characterRef.update({
+      ...updateData,
+      updatedAt: new Date(),
     });
-    
-    if (fields.length === 0) return this.findById(id);
-    
-    values.push(new Date().toISOString()); // updatedAt
-    values.push(id);
-    
-    const stmt = db.prepare(`
-      UPDATE characters 
-      SET ${fields.join(', ')}, updatedAt = ?
-      WHERE id = ?
-    `);
-    
-    stmt.run(...values);
     return this.findById(id);
   }
 
-  static deleteById(id) {
-    const db = getDB();
-    const stmt = db.prepare('DELETE FROM characters WHERE id = ?');
-    const result = stmt.run(id);
-    return result.changes > 0;
+  static async deleteById(id) {
+    const characterRef = firestore().collection('characters').doc(id);
+    await characterRef.delete();
+    return true;
   }
 
-  // Check if user owns character
-  static isOwner(characterId, userId) {
-    const db = getDB();
-    const stmt = db.prepare('SELECT userId FROM characters WHERE id = ?');
-    const character = stmt.get(characterId);
+  static async isOwner(characterId, userId) {
+    const character = await this.findById(characterId);
     return character && character.userId === userId;
   }
 
-  // Assign character to campaign
-  static assignToCampaign(characterId, campaignId) {
+  static async assignToCampaign(characterId, campaignId) {
     return this.updateById(characterId, { campaignId });
   }
 
-  // Remove character from campaign
-  static removeFromCampaign(characterId) {
+  static async removeFromCampaign(characterId) {
     return this.updateById(characterId, { campaignId: null });
   }
 
-  // Level up character
-  static levelUp(characterId) {
-    const character = this.findById(characterId);
+  static async levelUp(characterId) {
+    const character = await this.findById(characterId);
     if (!character) return null;
     
     return this.updateById(characterId, { level: character.level + 1 });
   }
 
-  // Update character stats
-  static updateStats(characterId, stats) {
+  static async updateStats(characterId, stats) {
     return this.updateById(characterId, { stats });
   }
 }

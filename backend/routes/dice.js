@@ -48,8 +48,7 @@ router.post('/roll', auth, async (req, res) => {
     // Prepare the complete result
     const result = {
       id: Date.now() + Math.random(), // Simple unique ID
-      userId: req.user.id,
-      username: req.user.username,
+      userId: req.user.uid,
       timestamp: new Date().toISOString(),
       formula: rollResult.formula || formula,
       result: rollResult.total,

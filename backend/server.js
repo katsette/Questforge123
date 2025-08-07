@@ -5,9 +5,28 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const admin = require('firebase-admin');
 require('dotenv').config();
 
-const { connectDB } = require('./config/database');
+// Initialize Firebase Admin SDK
+const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+
+if (!serviceAccountBase64) {
+  console.error('FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable not set.');
+  process.exit(1);
+}
+
+try {
+  const serviceAccount = JSON.parse(Buffer.from(serviceAccountBase64, 'base64').toString('ascii'));
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+  console.log('Firebase Admin SDK initialized successfully.');
+} catch (error) {
+  console.error('Error initializing Firebase Admin SDK:', error);
+  process.exit(1);
+}
+
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const campaignRoutes = require('./routes/campaigns');
@@ -19,34 +38,6 @@ const aiRoutes = require('./routes/ai');
 const socketAuth = require('./middleware/socketAuth');
 const chatHandlers = require('./socket/chatHandlers');
 const campaignHandlers = require('./socket/campaignHandlers');
-
-// Validate critical environment variables
-const validateEnvironment = () => {
-  const warnings = [];
-  
-  if (!process.env.JWT_SECRET) {
-    warnings.push('JWT_SECRET');
-  }
-  
-  if (!process.env.NODE_ENV) {
-    warnings.push('NODE_ENV');
-    // Set default NODE_ENV if not provided
-    process.env.NODE_ENV = 'development';
-  }
-  
-  if (warnings.length > 0) {
-    console.warn('⚠️  Missing recommended environment variables:', warnings);
-    console.warn('ℹ️ These variables will use fallback values:');
-    warnings.forEach(key => {
-      console.warn(`  - ${key} (will use secure fallback)`);
-    });
-  }
-  
-  console.log('✅ Environment configuration validated');
-};
-
-// Validate environment before starting
-validateEnvironment();
 
 const app = express();
 const server = http.createServer(app);
@@ -117,8 +108,7 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Database connection
-connectDB();
+
 
 // Make io accessible to routes
 app.use((req, res, next) => {

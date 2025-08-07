@@ -15,7 +15,7 @@ const chatHandlers = (socket, io) => {
       }
 
       // Check if user is part of campaign
-      const isAuthorized = Campaign.isMember(campaignId, socket.userId);
+      const isAuthorized = await Campaign.isMember(campaignId, socket.userId);
 
       if (!isAuthorized) {
         socket.emit('error', { message: 'Not authorized to access this campaign' });
@@ -26,10 +26,10 @@ const chatHandlers = (socket, io) => {
       const roomName = `campaign:${campaignId}:${room}`;
       socket.join(roomName);
       
-      console.log(`User ${socket.username} joined chat room: ${roomName}`);
+      console.log(`User ${socket.userId} joined chat room: ${roomName}`);
       
       // Send recent messages
-      const recentMessages = Message.getRecentMessages(campaignId, 50);
+      const recentMessages = await Message.getRecentMessages(campaignId, 50);
       socket.emit('chat-history', { 
         room, 
         messages: recentMessages 
@@ -38,7 +38,6 @@ const chatHandlers = (socket, io) => {
       // Notify others in the room
       socket.to(roomName).emit('user-joined-chat', {
         userId: socket.userId,
-        username: socket.username,
         room
       });
 
@@ -59,7 +58,6 @@ const chatHandlers = (socket, io) => {
       // Notify others in the room
       socket.to(roomName).emit('user-left-chat', {
         userId: socket.userId,
-        username: socket.username,
         room
       });
 
@@ -84,7 +82,7 @@ const chatHandlers = (socket, io) => {
       }
 
       // Create new message
-      const message = Message.create({
+      const message = await Message.create({
         content: content.trim(),
         userId: socket.userId,
         campaignId: campaignId,
@@ -98,7 +96,7 @@ const chatHandlers = (socket, io) => {
       // Broadcast message to room
       io.to(roomName).emit('new-message', message);
 
-      console.log(`Message sent in ${roomName} by ${socket.username}`);
+      console.log(`Message sent in ${roomName} by ${socket.userId}`);
 
     } catch (error) {
       console.error('Send message error:', error);
@@ -109,14 +107,14 @@ const chatHandlers = (socket, io) => {
   // Edit message
   socket.on('edit-message', async (data) => {
     try {
-      const { messageId, content } = data;
+      const { messageId, campaignId, content } = data;
       
       if (!content || content.trim().length === 0) {
         socket.emit('error', { message: 'Message content cannot be empty' });
         return;
       }
 
-      const message = Message.findById(messageId);
+      const message = await Message.findById(messageId, campaignId);
       if (!message) {
         socket.emit('error', { message: 'Message not found' });
         return;
@@ -130,14 +128,14 @@ const chatHandlers = (socket, io) => {
 
       // Check if message is not too old (e.g., 15 minutes)
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-      if (new Date(message.createdAt) < fifteenMinutesAgo) {
+      if (new Date(message.createdAt.toDate()) < fifteenMinutesAgo) {
         socket.emit('error', { message: 'Message too old to edit' });
         return;
       }
 
-      const updatedMessage = Message.updateById(messageId, { content: content.trim() });
+      const updatedMessage = await Message.updateById(messageId, campaignId, { content: content.trim() });
 
-      const roomName = `campaign:${message.campaignId}:${room}`;
+      const roomName = `campaign:${campaignId}:${data.room || 'general'}`;
       io.to(roomName).emit('message-edited', updatedMessage);
 
     } catch (error) {
@@ -149,16 +147,16 @@ const chatHandlers = (socket, io) => {
   // Delete message
   socket.on('delete-message', async (data) => {
     try {
-      const { messageId } = data;
+      const { messageId, campaignId } = data;
       
-      const message = Message.findById(messageId);
+      const message = await Message.findById(messageId, campaignId);
       if (!message) {
         socket.emit('error', { message: 'Message not found' });
         return;
       }
 
       // Check if user owns the message or is GM
-      const campaign = Campaign.findById(message.campaignId);
+      const campaign = await Campaign.findById(campaignId);
       const isGM = campaign.dmId === socket.userId;
       const isOwner = message.userId === socket.userId;
 
@@ -167,9 +165,9 @@ const chatHandlers = (socket, io) => {
         return;
       }
 
-      Message.deleteById(messageId);
+      await Message.deleteById(messageId, campaignId);
 
-      const roomName = `campaign:${message.campaignId}:${room}`;
+      const roomName = `campaign:${campaignId}:${data.room || 'general'}`;
       io.to(roomName).emit('message-deleted', { messageId, deletedBy: socket.userId });
 
     } catch (error) {
@@ -181,21 +179,20 @@ const chatHandlers = (socket, io) => {
   // Add reaction to message (simplified - we'll implement reactions later)
   socket.on('add-reaction', async (data) => {
     try {
-      const { messageId, emoji } = data;
+      const { messageId, campaignId, emoji } = data;
       
-      const message = Message.findById(messageId);
+      const message = await Message.findById(messageId, campaignId);
       if (!message) {
         socket.emit('error', { message: 'Message not found' });
         return;
       }
 
       // For now, just emit the reaction without storing it
-      const roomName = `campaign:${message.campaignId}:general`;
+      const roomName = `campaign:${campaignId}:${data.room || 'general'}`;
       io.to(roomName).emit('reaction-added', { 
         messageId, 
         emoji, 
         userId: socket.userId, 
-        username: socket.username 
       });
 
     } catch (error) {
@@ -207,16 +204,16 @@ const chatHandlers = (socket, io) => {
   // Remove reaction from message (simplified)
   socket.on('remove-reaction', async (data) => {
     try {
-      const { messageId, emoji } = data;
+      const { messageId, campaignId, emoji } = data;
       
-      const message = Message.findById(messageId);
+      const message = await Message.findById(messageId, campaignId);
       if (!message) {
         socket.emit('error', { message: 'Message not found' });
         return;
       }
 
       // For now, just emit the reaction removal without storing it
-      const roomName = `campaign:${message.campaignId}:general`;
+      const roomName = `campaign:${campaignId}:${data.room || 'general'}`;
       io.to(roomName).emit('reaction-removed', { 
         messageId, 
         emoji, 
@@ -236,7 +233,6 @@ const chatHandlers = (socket, io) => {
     
     socket.to(roomName).emit('user-typing-start', {
       userId: socket.userId,
-      username: socket.username
     });
   });
 
@@ -246,7 +242,6 @@ const chatHandlers = (socket, io) => {
     
     socket.to(roomName).emit('user-typing-stop', {
       userId: socket.userId,
-      username: socket.username
     });
   });
 };
