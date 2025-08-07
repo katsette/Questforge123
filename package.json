@@ -2,7 +2,7 @@
   "name": "questforge",
   "version": "1.0.0",
   "description": "QuestForge is a comprehensive web application designed to enhance your Dungeons & Dragons gaming experience. Built with modern web technologies, it provides tools for campaign management, character sheets, real-time chat, dice rolling, and AI-powered assistance for Dungeon Masters.",
-  "main": "test-full-app.js",
+  "main": "start.js",
   "directories": {
     "doc": "docs"
   },
