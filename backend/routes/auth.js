@@ -9,6 +9,9 @@ const router = express.Router();
 
 // Generate JWT token
 const generateToken = (userId) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is not set');
+  }
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d'
   });
@@ -38,7 +41,19 @@ router.post('/register', [
       });
     }
 
-    const { username, email, password, firstName, lastName } = req.body;
+    const { username, email, password, displayName, firstName, lastName } = req.body;
+    
+    // Use displayName as firstName if provided, or split displayName if it contains spaces
+    let finalFirstName = firstName;
+    let finalLastName = lastName;
+    
+    if (displayName && !firstName && !lastName) {
+      const nameParts = displayName.trim().split(' ');
+      finalFirstName = nameParts[0];
+      if (nameParts.length > 1) {
+        finalLastName = nameParts.slice(1).join(' ');
+      }
+    }
 
     // Check if user already exists
     const existingUserByEmail = User.findByEmail(email);
@@ -64,8 +79,8 @@ router.post('/register', [
       username,
       email,
       password: hashedPassword,
-      firstName,
-      lastName
+      firstName: finalFirstName,
+      lastName: finalLastName
     });
 
     // Generate token
