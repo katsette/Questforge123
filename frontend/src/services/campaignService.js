@@ -1,4 +1,4 @@
-import { getFirestore, collection, doc, addDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where } from "firebase/firestore";
+import { getFirestore, collection, doc, addDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, getDoc } from "firebase/firestore";
 import { app } from "../config/firebase";
 
 const db = getFirestore(app);
@@ -80,7 +80,7 @@ export const leaveCampaign = async (campaignId, userId) => {
 export const fetchCampaignById = async (campaignId) => {
   try {
     const campaignDocRef = doc(db, 'campaigns', campaignId);
-    const campaignSnap = await campaignDocRef.get();
+    const campaignSnap = await getDoc(campaignDocRef);
     if (campaignSnap.exists()) {
       return { id: campaignSnap.id, ...campaignSnap.data() };
     } else {

@@ -223,13 +223,13 @@ const RegisterPage = () => {
               />
               <label htmlFor="accept-terms" className="ml-2 block text-sm text-gray-300">
                 I agree to the{' '}
-                <a href="#" className="text-primary-400 hover:text-primary-300">
+                <Link to="#" className="text-primary-400 hover:text-primary-300">
                   Terms of Service
-                </a>{' '}
+                </Link>{' '}
                 and{' '}
-                <a href="#" className="text-primary-400 hover:text-primary-300">
+                <Link to="#" className="text-primary-400 hover:text-primary-300">
                   Privacy Policy
-                </a>
+                </Link>
               </label>
             </div>
             {errors.acceptTerms && (

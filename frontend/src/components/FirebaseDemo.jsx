@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { uploadFile } from '../services/storageService';
-import { writeData, readData, removeData, pushData } from '../services/databaseService';
+import { writeData, readData, removeData, addDocument } from '../services/databaseService';
 import { registerUser, loginUser, logoutUser, subscribeToAuthChanges } from '../services/authService';
 import toast from 'react-hot-toast';
 
@@ -71,7 +71,7 @@ const FirebaseDemo = () => {
 
   const handlePushData = async () => {
     try {
-      const key = await pushData(dbPath, dbValue);
+      const key = await addDocument(dbPath, JSON.parse(dbValue));
       toast.success(`Data pushed to ${dbPath} with key: ${key}`);
     } catch (error) {
       toast.error(`Push failed: ${error.message}`);

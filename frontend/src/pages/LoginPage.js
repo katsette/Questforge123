@@ -133,9 +133,9 @@ const LoginPage = () => {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-primary-400 hover:text-primary-300">
+                <Link to="/forgot-password" className="font-medium text-primary-400 hover:text-primary-300">
                   Forgot your password?
-                </a>
+                </Link>
               </div>
             </div>
 
