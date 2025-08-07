@@ -15,6 +15,7 @@ import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import CampaignsPage from './pages/CampaignsPage';
 import CampaignDetailPage from './pages/CampaignDetailPage';
+import CampaignChatPage from './pages/CampaignChatPage';
 import CharactersPage from './pages/CharactersPage';
 import CharacterDetailPage from './pages/CharacterDetailPage';
 import ProfilePage from './pages/ProfilePage';
@@ -123,6 +124,14 @@ function App() {
                   <Layout>
                     <CampaignDetailPage />
                   </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/campaigns/:id/chat"
+              element={
+                <ProtectedRoute>
+                  <CampaignChatPage />
                 </ProtectedRoute>
               }
             />

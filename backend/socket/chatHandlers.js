@@ -15,8 +15,7 @@ const chatHandlers = (socket, io) => {
       }
 
       // Check if user is part of campaign
-      const isAuthorized = campaign.dm.toString() === socket.userId || 
-                          campaign.players.some(p => p.user.toString() === socket.userId && p.isActive);
+      const isAuthorized = Campaign.isMember(campaignId, socket.userId);
 
       if (!isAuthorized) {
         socket.emit('error', { message: 'Not authorized to access this campaign' });
@@ -30,10 +29,10 @@ const chatHandlers = (socket, io) => {
       console.log(`User ${socket.username} joined chat room: ${roomName}`);
       
       // Send recent messages
-      const recentMessages = await Message.getRecentMessages(campaignId, room, 50);
+      const recentMessages = Message.getRecentMessages(campaignId, 50);
       socket.emit('chat-history', { 
         room, 
-        messages: recentMessages.reverse() 
+        messages: recentMessages 
       });
 
       // Notify others in the room
@@ -85,22 +84,14 @@ const chatHandlers = (socket, io) => {
       }
 
       // Create new message
-      const message = new Message({
+      const message = Message.create({
         content: content.trim(),
-        author: socket.userId,
-        campaign: campaignId,
-        room,
+        userId: socket.userId,
+        campaignId: campaignId,
+        characterId: characterId || null,
         type,
-        character: characterId || null
+        isSystemMessage: type === 'system'
       });
-
-      await message.save();
-      
-      // Populate author and character info
-      await message.populate('author', 'username profile.displayName profile.avatar');
-      if (characterId) {
-        await message.populate('character', 'name avatar');
-      }
 
       const roomName = `campaign:${campaignId}:${room}`;
       
@@ -125,30 +116,29 @@ const chatHandlers = (socket, io) => {
         return;
       }
 
-      const message = await Message.findById(messageId);
+      const message = Message.findById(messageId);
       if (!message) {
         socket.emit('error', { message: 'Message not found' });
         return;
       }
 
       // Check if user owns the message
-      if (message.author.toString() !== socket.userId) {
+      if (message.userId !== socket.userId) {
         socket.emit('error', { message: 'Not authorized to edit this message' });
         return;
       }
 
       // Check if message is not too old (e.g., 15 minutes)
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-      if (message.createdAt < fifteenMinutesAgo) {
+      if (new Date(message.createdAt) < fifteenMinutesAgo) {
         socket.emit('error', { message: 'Message too old to edit' });
         return;
       }
 
-      await message.editContent(content.trim());
-      await message.populate('author', 'username profile.displayName profile.avatar');
+      const updatedMessage = Message.updateById(messageId, { content: content.trim() });
 
-      const roomName = `campaign:${message.campaign}:${message.room}`;
-      io.to(roomName).emit('message-edited', message);
+      const roomName = `campaign:${message.campaignId}:${room}`;
+      io.to(roomName).emit('message-edited', updatedMessage);
 
     } catch (error) {
       console.error('Edit message error:', error);
@@ -161,25 +151,25 @@ const chatHandlers = (socket, io) => {
     try {
       const { messageId } = data;
       
-      const message = await Message.findById(messageId);
+      const message = Message.findById(messageId);
       if (!message) {
         socket.emit('error', { message: 'Message not found' });
         return;
       }
 
       // Check if user owns the message or is GM
-      const campaign = await Campaign.findById(message.campaign);
-      const isGM = campaign.dm.toString() === socket.userId;
-      const isOwner = message.author.toString() === socket.userId;
+      const campaign = Campaign.findById(message.campaignId);
+      const isGM = campaign.dmId === socket.userId;
+      const isOwner = message.userId === socket.userId;
 
       if (!isOwner && !isGM) {
         socket.emit('error', { message: 'Not authorized to delete this message' });
         return;
       }
 
-      await message.softDelete(socket.userId);
+      Message.deleteById(messageId);
 
-      const roomName = `campaign:${message.campaign}:${message.room}`;
+      const roomName = `campaign:${message.campaignId}:${room}`;
       io.to(roomName).emit('message-deleted', { messageId, deletedBy: socket.userId });
 
     } catch (error) {
@@ -188,20 +178,19 @@ const chatHandlers = (socket, io) => {
     }
   });
 
-  // Add reaction to message
+  // Add reaction to message (simplified - we'll implement reactions later)
   socket.on('add-reaction', async (data) => {
     try {
       const { messageId, emoji } = data;
       
-      const message = await Message.findById(messageId);
+      const message = Message.findById(messageId);
       if (!message) {
         socket.emit('error', { message: 'Message not found' });
         return;
       }
 
-      await message.addReaction(emoji, socket.userId);
-
-      const roomName = `campaign:${message.campaign}:${message.room}`;
+      // For now, just emit the reaction without storing it
+      const roomName = `campaign:${message.campaignId}:general`;
       io.to(roomName).emit('reaction-added', { 
         messageId, 
         emoji, 
@@ -215,20 +204,19 @@ const chatHandlers = (socket, io) => {
     }
   });
 
-  // Remove reaction from message
+  // Remove reaction from message (simplified)
   socket.on('remove-reaction', async (data) => {
     try {
       const { messageId, emoji } = data;
       
-      const message = await Message.findById(messageId);
+      const message = Message.findById(messageId);
       if (!message) {
         socket.emit('error', { message: 'Message not found' });
         return;
       }
 
-      await message.removeReaction(emoji, socket.userId);
-
-      const roomName = `campaign:${message.campaign}:${message.room}`;
+      // For now, just emit the reaction removal without storing it
+      const roomName = `campaign:${message.campaignId}:general`;
       io.to(roomName).emit('reaction-removed', { 
         messageId, 
         emoji, 

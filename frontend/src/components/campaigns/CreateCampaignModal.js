@@ -68,11 +68,23 @@ const CreateCampaignModal = ({ isOpen, onClose, onSubmit }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-50"
-            onClick={handleClose}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                handleClose();
+              }
+            }}
           />
 
           {/* Modal */}
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div 
+            className="flex min-h-full items-center justify-center p-4"
+            onClick={(e) => {
+              // Prevent modal container clicks from closing modal
+              if (e.target === e.currentTarget) {
+                handleClose();
+              }
+            }}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -125,11 +137,18 @@ const CreateCampaignModal = ({ isOpen, onClose, onSubmit }) => {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
+                    onClick={(e) => {
+                      console.log('Input clicked:', e.target);
+                      e.target.focus();
+                    }}
+                    onFocus={() => console.log('Input focused')}
                     placeholder="Enter your campaign name..."
                     className="input-primary"
                     disabled={loading}
                     maxLength={100}
                     required
+                    autoFocus
+                    style={{ pointerEvents: 'auto', zIndex: 10 }}
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Choose a memorable name for your adventure
@@ -146,11 +165,17 @@ const CreateCampaignModal = ({ isOpen, onClose, onSubmit }) => {
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
+                    onClick={(e) => {
+                      console.log('Textarea clicked:', e.target);
+                      e.target.focus();
+                    }}
+                    onFocus={() => console.log('Textarea focused')}
                     placeholder="Describe your campaign world, setting, or style of play..."
                     rows={4}
                     className="input-primary resize-none"
                     disabled={loading}
                     maxLength={500}
+                    style={{ pointerEvents: 'auto', zIndex: 10 }}
                   />
                   <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
                     <span>Help players understand what to expect</span>

@@ -230,4 +230,64 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
   }
+
+  /* Chat-specific styles */
+  .chat-layout {
+    @apply h-screen flex flex-col;
+  }
+
+  .chat-messages {
+    @apply flex-1 overflow-y-auto;
+    scroll-behavior: smooth;
+  }
+
+  .chat-message {
+    @apply transition-all duration-200;
+  }
+
+  .chat-message:hover {
+    @apply bg-gray-50 dark:bg-gray-800/50;
+  }
+
+  .chat-input-area {
+    @apply flex-shrink-0 border-t border-gray-200 dark:border-gray-700;
+  }
+
+  .chat-sidebar {
+    @apply flex-shrink-0 border-l border-gray-200 dark:border-gray-700;
+  }
+
+  /* Message bubble animations */
+  .message-appear {
+    @apply animate-in fade-in slide-in-from-bottom-2 duration-300;
+  }
+
+  .message-edit-mode {
+    @apply bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg;
+  }
+
+  /* Typing indicator animation */
+  .typing-dots {
+    @apply animate-pulse;
+  }
+
+  /* Reaction hover effects */
+  .reaction-button {
+    @apply transition-transform duration-150 hover:scale-110;
+  }
+
+  /* Mobile chat optimizations */
+  @media (max-width: 768px) {
+    .chat-layout {
+      @apply h-screen;
+    }
+    
+    .chat-message {
+      @apply px-2;
+    }
+    
+    .chat-input-area {
+      @apply p-3;
+    }
+  }
 }
