@@ -4,13 +4,19 @@ services:
     env: node
     plan: free
     buildCommand: |
-      echo "🔍 Debug: Render build environment"
-      echo "📍 PWD: $PWD"
-      echo "📂 Contents:"
+      echo "🏗️ Building QuestForge on Render..."
+      echo "📍 Current directory: $PWD"
+      echo "📂 Files available:"
       ls -la
-      echo "🏗️ Running build script..."
-      chmod +x ./build.sh
-      ./build.sh
+      echo "📦 Installing root dependencies..."
+      npm install
+      echo "🎨 Building frontend..."
+      cd frontend && npm ci && npm run build && cd ..
+      echo "🔧 Installing backend..."
+      cd backend && npm ci && cd ..
+      echo "✅ Verifying build..."
+      ls -la frontend/build/index.html || echo "Frontend build missing!"
+      echo "🚀 Build complete!"
     startCommand: npm start
     envVars:
       - key: NODE_ENV

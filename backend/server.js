@@ -85,10 +85,12 @@ if (process.env.NODE_ENV === 'production') {
   
   // Try multiple possible paths for the frontend build
   const possiblePaths = [
-    path.join(__dirname, '../frontend/build'),
-    path.join(__dirname, '../../frontend/build'),
-    path.join(process.cwd(), 'frontend/build'),
-    path.join(__dirname, 'build')
+    path.join(__dirname, '../frontend/build'),                    // Local dev
+    path.join(__dirname, '../../frontend/build'),                 // Alternative local
+    path.join(process.cwd(), '../frontend/build'),                // Render from backend dir
+    path.join('/opt/render/project/src/frontend/build'),          // Render absolute path
+    path.join(process.cwd(), 'frontend/build'),                   // Root level
+    path.join(__dirname, 'build')                                 // Build in backend
   ];
   
   let buildPath = null;
