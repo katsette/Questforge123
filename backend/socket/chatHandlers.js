@@ -167,12 +167,12 @@ const chatHandlers = (socket, io) => {
         return;
       }
 
-      // Check if user owns the message or is DM
+      // Check if user owns the message or is GM
       const campaign = await Campaign.findById(message.campaign);
-      const isDM = campaign.dm.toString() === socket.userId;
+      const isGM = campaign.dm.toString() === socket.userId;
       const isOwner = message.author.toString() === socket.userId;
 
-      if (!isOwner && !isDM) {
+      if (!isOwner && !isGM) {
         socket.emit('error', { message: 'Not authorized to delete this message' });
         return;
       }

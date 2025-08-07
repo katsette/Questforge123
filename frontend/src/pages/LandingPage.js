@@ -144,7 +144,7 @@ const LandingPage = () => {
                 <h3 className="text-xl font-semibold text-white mb-3">Real-time Chat</h3>
                 <p className="text-gray-300">
                   Chat with your party in multiple channels. In-character, out-of-character,
-                  and private DM channels all in one place.
+                  and private GM channels all in one place.
                 </p>
               </motion.div>
 

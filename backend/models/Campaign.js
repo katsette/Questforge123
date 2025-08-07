@@ -12,7 +12,7 @@ class Campaign {
     
     const result = stmt.run(name, description, dmId, isActive ? 1 : 0);
     
-    // Add DM to campaign members
+    // Add GM to campaign members
     this.addMember(result.lastInsertRowid, dmId, 'dm');
     
     return this.findById(result.lastInsertRowid);
@@ -40,7 +40,7 @@ class Campaign {
     return stmt.all();
   }
 
-  static findByDM(dmId) {
+  static findByGM(dmId) {
     const db = getDB();
     const stmt = db.prepare(`
       SELECT c.*, u.username as dmUsername

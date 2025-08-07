@@ -140,7 +140,7 @@ const campaignHandlers = (socket, io) => {
       const roomName = `campaign:${campaignId}`;
       
       if (isPrivate) {
-        // Only send to DM if it's a private roll
+        // Only send to GM if it's a private roll
         const dmSocketId = await findUserSocket(campaign.dm.toString());
         if (dmSocketId) {
           io.to(dmSocketId).emit('private-dice-roll', {
@@ -183,9 +183,9 @@ const campaignHandlers = (socket, io) => {
         return;
       }
 
-      // Only DM can update initiative
+      // Only GM can update initiative
       if (campaign.dm.toString() !== socket.userId) {
-        socket.emit('error', { message: 'Only DM can update initiative tracker' });
+        socket.emit('error', { message: 'Only GM can update initiative tracker' });
         return;
       }
 
@@ -217,9 +217,9 @@ const campaignHandlers = (socket, io) => {
         return;
       }
 
-      // Only DM can change session status
+      // Only GM can change session status
       if (campaign.dm.toString() !== socket.userId) {
-        socket.emit('error', { message: 'Only DM can change session status' });
+        socket.emit('error', { message: 'Only GM can change session status' });
         return;
       }
 
