@@ -12,6 +12,9 @@
     "build:frontend": "cd frontend && npm install && npm run build",
     "build:backend": "cd backend && npm install",
     "start": "node start.js",
+    "start:backend": "node start-backend.js",
+    "start:frontend": "cd frontend && npm start",
+    "start:dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "heroku-postbuild": "npm run build",
     "prebuild": "echo 'Starting QuestForge build process...' && pwd && ls -la",
     "postbuild": "echo 'Build complete! Checking frontend build...' && ls -la frontend/build/index.html || echo 'Frontend build missing!'"

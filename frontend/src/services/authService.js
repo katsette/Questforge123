@@ -1,53 +1,110 @@
 import axios from 'axios';
 
-// Create axios instance with base configuration
-// In production, use relative URLs (same domain as frontend)
-// In development, use localhost:5000
-const API_BASE_URL = process.env.REACT_APP_API_URL || 
-  (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5001');
+// Multiple port fallback system for development
+const DEVELOPMENT_PORTS = [5001, 5000, 5002, 5003, 8000, 8001, 3001];
+let discoveredApiUrl = null;
 
-const fullApiUrl = `${API_BASE_URL}/api`;
-console.log('🔧 API Configuration:', {
-  NODE_ENV: process.env.NODE_ENV,
-  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
-  API_BASE_URL,
-  fullApiUrl
-});
-
-const api = axios.create({
-  baseURL: fullApiUrl,
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  timeout: 10000 // 10 second timeout
-});
-
-// Add token to requests if available
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Discover available backend port
+const discoverBackendPort = async () => {
+  if (process.env.NODE_ENV === 'production') {
+    return ''; // Use relative URLs in production
   }
-  return config;
-});
 
-// Handle token expiration
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+
+  if (discoveredApiUrl) {
+    return discoveredApiUrl; // Use cached result
+  }
+
+  console.log('🔍 Discovering backend port...');
+  
+  for (const port of DEVELOPMENT_PORTS) {
+    const testUrl = `http://localhost:${port}`;
+    try {
+      console.log(`  🧪 Testing port ${port}...`);
+      const response = await axios.get(`${testUrl}/api/health`, { 
+        timeout: 2000,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.status === 200) {
+        console.log(`  ✅ Found backend on port ${port}`);
+        discoveredApiUrl = testUrl;
+        return testUrl;
+      }
+    } catch (error) {
+      console.log(`  ❌ Port ${port} not available`);
+      // Continue to next port
     }
-    return Promise.reject(error);
   }
-);
+  
+  console.warn('⚠️ No backend found on any port, falling back to port 5001');
+  discoveredApiUrl = 'http://localhost:5001';
+  return discoveredApiUrl;
+};
+
+// Initialize API configuration
+let api;
+const initializeApi = async () => {
+  const API_BASE_URL = await discoverBackendPort();
+  const fullApiUrl = `${API_BASE_URL}/api`;
+  
+  console.log('🔧 API Configuration:', {
+    NODE_ENV: process.env.NODE_ENV,
+    REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+    discoveredPorts: DEVELOPMENT_PORTS,
+    API_BASE_URL,
+    fullApiUrl
+  });
+
+  api = axios.create({
+    baseURL: fullApiUrl,
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    timeout: 10000 // 10 second timeout
+  });
+  
+  return api;
+};
+
+// Get or initialize API instance
+const getApi = async () => {
+  if (!api) {
+    await initializeApi();
+    
+    // Add interceptors after API is initialized
+    api.interceptors.request.use((config) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+
+    // Handle token expiration
+    api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+  return api;
+};
 
 export const authService = {
   // Health check - useful for debugging
   async healthCheck() {
     try {
-      const response = await api.get('/health');
+      const apiInstance = await getApi();
+      const response = await apiInstance.get('/health');
       console.log('✅ Health check successful:', response.data);
       return response.data;
     } catch (error) {
@@ -58,7 +115,8 @@ export const authService = {
   // Register new user
   async register(userData) {
     try {
-      const response = await api.post('/auth/register', userData);
+      const apiInstance = await getApi();
+      const response = await apiInstance.post('/auth/register', userData);
       return response.data;
     } catch (error) {
       console.error('Registration error:', error);
@@ -69,7 +127,8 @@ export const authService = {
   // Login user
   async login(credentials) {
     try {
-      const response = await api.post('/auth/login', credentials);
+      const apiInstance = await getApi();
+      const response = await apiInstance.post('/auth/login', credentials);
       return response.data;
     } catch (error) {
       console.error('Login error:', error);
@@ -80,7 +139,8 @@ export const authService = {
   // Logout user
   async logout() {
     try {
-      const response = await api.post('/auth/logout');
+      const apiInstance = await getApi();
+      const response = await apiInstance.post('/auth/logout');
       return response.data;
     } catch (error) {
       console.error('Logout error:', error);
@@ -91,7 +151,8 @@ export const authService = {
   // Get current user
   async getCurrentUser() {
     try {
-      const response = await api.get('/auth/me');
+      const apiInstance = await getApi();
+      const response = await apiInstance.get('/auth/me');
       return response.data;
     } catch (error) {
       console.error('Get current user error:', error);
@@ -102,7 +163,8 @@ export const authService = {
   // Verify token
   async verifyToken() {
     try {
-      const response = await api.get('/auth/verify');
+      const apiInstance = await getApi();
+      const response = await apiInstance.get('/auth/verify');
       return response.data;
     } catch (error) {
       console.error('Token verification error:', error);
@@ -113,7 +175,8 @@ export const authService = {
   // Update user profile
   async updateProfile(profileData) {
     try {
-      const response = await api.put('/users/profile', profileData);
+      const apiInstance = await getApi();
+      const response = await apiInstance.put('/users/profile', profileData);
       return response.data;
     } catch (error) {
       console.error('Update profile error:', error);
@@ -124,7 +187,8 @@ export const authService = {
   // Change password
   async changePassword(passwordData) {
     try {
-      const response = await api.put('/auth/password', passwordData);
+      const apiInstance = await getApi();
+      const response = await apiInstance.put('/auth/password', passwordData);
       return response.data;
     } catch (error) {
       console.error('Change password error:', error);
@@ -135,7 +199,8 @@ export const authService = {
   // Search users
   async searchUsers(query, limit = 10) {
     try {
-      const response = await api.get(`/users/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+      const apiInstance = await getApi();
+      const response = await apiInstance.get(`/users/search?q=${encodeURIComponent(query)}&limit=${limit}`);
       return response.data;
     } catch (error) {
       console.error('Search users error:', error);
@@ -146,7 +211,8 @@ export const authService = {
   // Get online users
   async getOnlineUsers() {
     try {
-      const response = await api.get('/users/online');
+      const apiInstance = await getApi();
+      const response = await apiInstance.get('/users/online');
       return response.data;
     } catch (error) {
       console.error('Get online users error:', error);
@@ -156,4 +222,4 @@ export const authService = {
 };
 
 // Export the configured axios instance for use in other services
-export { api };
+export { getApi as api };
