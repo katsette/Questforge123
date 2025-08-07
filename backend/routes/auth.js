@@ -226,15 +226,35 @@ router.get('/me', auth, async (req, res) => {
 });
 
 // Verify token
-router.get('/verify', auth, (req, res) => {
-  res.json({
-    valid: true,
-    user: {
-      id: req.user.id,
-      username: req.user.username,
-      email: req.user.email
+router.get('/verify', auth, async (req, res) => {
+  try {
+    const user = User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({
+        error: 'User not found',
+        message: 'Invalid token - user does not exist'
+      });
     }
-  });
+    
+    const userCampaigns = User.getUserCampaigns(req.user.id);
+    const userCharacters = User.getUserCharacters(req.user.id);
+    
+    res.json({
+      valid: true,
+      message: 'Token is valid',
+      user: {
+        ...User.toJSON(user),
+        campaigns: userCampaigns,
+        characters: userCharacters
+      }
+    });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(401).json({
+      error: 'Token verification failed',
+      message: 'Invalid or expired token'
+    });
+  }
 });
 
 // Change password

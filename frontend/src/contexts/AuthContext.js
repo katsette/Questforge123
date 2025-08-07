@@ -69,11 +69,44 @@ export const AuthProvider = ({ children }) => {
 
   // Check for existing token on mount
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      authService.verifyToken()
-        .then(response => {
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token');
+      const lastTokenVerification = localStorage.getItem('lastTokenVerification');
+      const now = Date.now();
+      
+      if (token) {
+        // Check if we've verified the token recently (within 5 minutes)
+        if (lastTokenVerification && (now - parseInt(lastTokenVerification)) < 5 * 60 * 1000) {
+          // Skip verification if we've verified recently and just use cached user data
+          const cachedUser = localStorage.getItem('cachedUser');
+          if (cachedUser) {
+            try {
+              const user = JSON.parse(cachedUser);
+              dispatch({
+                type: 'LOGIN_SUCCESS',
+                payload: {
+                  user: user,
+                  token: token
+                }
+              });
+              console.log('✅ Using cached authentication data');
+              return;
+            } catch (e) {
+              console.warn('Failed to parse cached user data:', e);
+            }
+          }
+        }
+        
+        // Verify token with backend
+        dispatch({ type: 'SET_LOADING', payload: true });
+        try {
+          console.log('🔍 Verifying authentication token...');
+          const response = await authService.verifyToken();
+          
+          // Cache successful verification
+          localStorage.setItem('lastTokenVerification', now.toString());
+          localStorage.setItem('cachedUser', JSON.stringify(response.user));
+          
           dispatch({
             type: 'LOGIN_SUCCESS',
             payload: {
@@ -81,27 +114,48 @@ export const AuthProvider = ({ children }) => {
               token: token
             }
           });
-        })
-        .catch((error) => {
-          console.log('Token verification failed:', error.response?.data?.message || error.message);
+          console.log('✅ Token verification successful');
+          
+        } catch (error) {
+          console.log('❌ Token verification failed:', error.response?.data?.message || error.message);
+          
+          // Clear all auth-related localStorage data
           localStorage.removeItem('token');
+          localStorage.removeItem('lastTokenVerification');
+          localStorage.removeItem('cachedUser');
+          
           dispatch({ type: 'LOGOUT' });
-          // Show a subtle notification that user needs to log in again
+          
+          // Only show error message if it's an actual session expiry, not network issues
           if (error.response?.status === 401) {
             toast.error('Your session has expired. Please log in again.');
+          } else if (error.code === 'NETWORK_ERROR' || !error.response) {
+            console.warn('Network error during token verification - will retry on next interaction');
           }
-        })
-        .finally(() => {
+        } finally {
           dispatch({ type: 'SET_LOADING', payload: false });
-        });
-    }
+        }
+      } else {
+        // No token found, ensure clean state
+        localStorage.removeItem('lastTokenVerification');
+        localStorage.removeItem('cachedUser');
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    };
+    
+    initializeAuth();
   }, []);
 
   const login = async (credentials) => {
     dispatch({ type: 'LOGIN_START' });
     try {
       const response = await authService.login(credentials);
+      
+      // Cache authentication data
       localStorage.setItem('token', response.token);
+      localStorage.setItem('lastTokenVerification', Date.now().toString());
+      localStorage.setItem('cachedUser', JSON.stringify(response.user));
+      
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: {
@@ -126,7 +180,12 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: 'LOGIN_START' });
     try {
       const response = await authService.register(userData);
+      
+      // Cache authentication data
       localStorage.setItem('token', response.token);
+      localStorage.setItem('lastTokenVerification', Date.now().toString());
+      localStorage.setItem('cachedUser', JSON.stringify(response.user));
+      
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: {
@@ -153,7 +212,12 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     }
+    
+    // Clear all auth-related localStorage data
     localStorage.removeItem('token');
+    localStorage.removeItem('lastTokenVerification');
+    localStorage.removeItem('cachedUser');
+    
     dispatch({ type: 'LOGOUT' });
     toast.success('Logged out successfully');
   };
