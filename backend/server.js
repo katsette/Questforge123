@@ -81,13 +81,53 @@ app.get('/api/health', (req, res) => {
 
 // Serve React frontend static files in production
 if (process.env.NODE_ENV === 'production') {
+  const buildPath = path.join(__dirname, '../frontend/build');
+  console.log(`🎨 Attempting to serve frontend from: ${buildPath}`);
+  
+  // Check if build folder exists
+  const fs = require('fs');
+  if (fs.existsSync(buildPath)) {
+    console.log('✅ Frontend build folder found');
+    if (fs.existsSync(path.join(buildPath, 'index.html'))) {
+      console.log('✅ Frontend index.html found');
+    } else {
+      console.warn('❌ Frontend index.html NOT found');
+    }
+  } else {
+    console.warn('❌ Frontend build folder NOT found');
+  }
+  
   // Serve static files from React build
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  app.use(express.static(buildPath));
   
   // Handle React Router - send all non-api requests to React app
   app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
-      res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+      const indexPath = path.join(buildPath, 'index.html');
+      console.log(`📄 Serving index.html for route: ${req.path}`);
+      
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        console.error(`❌ Cannot find index.html at: ${indexPath}`);
+        res.status(404).json({
+          error: 'Frontend Not Found',
+          message: 'Frontend build files are not available',
+          buildPath: buildPath,
+          indexPath: indexPath
+        });
+      }
+    }
+  });
+} else {
+  // Development fallback
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.json({
+        message: 'QuestForge API Server',
+        environment: 'development',
+        note: 'Frontend should be served separately in development'
+      });
     }
   });
 }
