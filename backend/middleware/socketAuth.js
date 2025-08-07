@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { getJWTSecret } = require('../utils/jwtSecret');
 
 const socketAuth = async (socket, next) => {
   try {
@@ -12,29 +13,26 @@ const socketAuth = async (socket, next) => {
       return next(new Error('Authentication error: No token provided'));
     }
 
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify JWT token using the same secret system
+    const { secret } = getJWTSecret();
+    const decoded = jwt.verify(token, secret);
     
-    // Get user from database
-    const user = await User.findById(decoded.id).select('-password -refreshToken');
+    // Get user from database (SQLite version)
+    const user = User.findById(decoded.id);
     
     if (!user) {
       return next(new Error('Authentication error: User not found'));
     }
 
-    // Set user online status
-    user.isOnline = true;
-    await user.save();
-
-    // Attach user info to socket
-    socket.userId = user._id.toString();
+    // Note: We don't track online status in SQLite for simplicity
+    // This could be added later with a separate online_users table if needed
+    
+    // Attach user info to socket (SQLite uses id instead of _id)
+    socket.userId = user.id;
     socket.username = user.username;
-    socket.user = user;
+    socket.user = User.toJSON(user); // Remove password field
 
-    // Update last active
-    await user.updateLastActive();
-
-    console.log(`Socket authenticated for user: ${user.username} (${user._id})`);
+    console.log(`Socket authenticated for user: ${user.username} (${user.id})`);
     next();
     
   } catch (error) {
