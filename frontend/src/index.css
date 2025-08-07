@@ -125,44 +125,58 @@
     @apply text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100;
   }
 
-  /* Fix sidebar scaling and responsive issues */
-  .sidebar-container {
-    @apply min-h-0 flex-1 overflow-hidden;
+  /* Top navigation layout optimizations */
+  .top-nav {
+    @apply sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700;
   }
 
-  /* Ensure proper sidebar sizing on all devices */
-  @media (max-width: 1023px) {
-    .sidebar-mobile {
-      @apply w-64 max-w-xs;
-    }
+  /* Full-width layout without sidebar */
+  .full-width-layout {
+    @apply w-full max-w-none;
   }
 
-  /* Prevent horizontal scrolling issues and improve layout */
-  .main-content {
-    @apply min-w-0 flex-1 w-full;
-  }
-
-  /* Fix responsive grid scaling issues */
+  /* Enhanced responsive grid scaling */
   @media (max-width: 640px) {
     .max-w-7xl {
-      @apply max-w-full;
+      @apply max-w-full px-3;
     }
     
-    /* Ensure cards don't overflow on small screens */
+    /* Mobile-optimized cards */
     .card {
-      @apply w-full min-w-0;
+      @apply w-full min-w-0 mx-0;
     }
     
-    /* Fix grid spacing on mobile */
+    /* Tighter grid spacing on mobile */
     .grid {
       @apply gap-3;
     }
+
+    /* Mobile navigation improvements */
+    .mobile-nav-item {
+      @apply text-base py-3 px-4;
+    }
   }
 
-  /* Improve medium screen responsiveness */
+  /* Tablet responsiveness */
   @media (min-width: 641px) and (max-width: 1023px) {
     .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 {
       @apply grid-cols-2;
+    }
+    
+    .max-w-7xl {
+      @apply px-4;
+    }
+  }
+
+  /* Desktop optimizations */
+  @media (min-width: 1024px) {
+    .max-w-7xl {
+      @apply px-6;
+    }
+    
+    /* Better spacing for larger screens */
+    .desktop-grid {
+      @apply gap-6;
     }
   }
 
@@ -171,8 +185,49 @@
     @apply overflow-x-hidden;
   }
 
-  /* Ensure proper flex layout */
+  /* Enhanced flex layout */
   .flex-1 {
-    @apply min-w-0;
+    @apply min-w-0 w-full;
+  }
+
+  /* Top navigation specific styles */
+  .nav-item {
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  .nav-item:hover {
+    @apply transform scale-105;
+  }
+
+  /* Mobile menu animations */
+  .mobile-menu {
+    @apply transform transition-transform duration-300 ease-in-out;
+  }
+
+  /* Content area optimizations */
+  .content-area {
+    @apply w-full min-h-0 flex-1;
+  }
+
+  /* Line clamp utilities for text truncation */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
   }
 }
