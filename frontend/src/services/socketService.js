@@ -56,6 +56,10 @@ class SocketService {
     return this.connected && this.socket?.connected;
   }
 
+  getSocket() {
+    return this.socket;
+  }
+
   // Campaign events
   joinCampaign(campaignId) {
     if (this.socket) {
