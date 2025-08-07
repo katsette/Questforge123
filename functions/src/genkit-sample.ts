@@ -1,10 +1,9 @@
 import { generate } from '@genkit-ai/ai';
-import { configureGenkit } from '@genkit-ai/core';
-import { defineFlow, runFlow } from '@genkit-ai/flow';
 import { geminiPro } from '@genkit-ai/googleai';
-import * as z from 'zod';
+import { configureGenkit, apiKey } from '@genkit-ai/core';
+import { defineFlow, runFlow } from '@genkit-ai/flow';
+import * as z from 'zod'; 
 import { setGlobalOptions } from 'firebase-functions';
-import { defineSecret } from 'firebase-functions/params';
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time. This helps mitigate the impact of unexpected
@@ -19,10 +18,10 @@ import { defineSecret } from 'firebase-functions/params';
 setGlobalOptions({ maxInstances: 10 });
 
 
-configureGenkit({
+configureGenkit({ models: [
 
     geminiPro({
-      apiKey: apiKey.value(),
+      apiKey: apiKey,
       // The Gemini API is not yet available in all regions.
       // See https://ai.google.dev/models/regions
       // for more information.
@@ -47,10 +46,10 @@ configureGenkit({
 export const menuSuggestionFlow = defineFlow(
   {
     name: 'menuSuggestionFlow',
-    inputSchema: z.string(),
+    inputSchema: z.string().describe('The subject of the restaurant.'),
     outputSchema: z.string(),
   },
-  async (subject) => {
+  async (subject: any) => {
     const llmResponse = await generate({
       model: geminiPro,
       prompt: `Suggest a name for a menu item for a ${subject} themed restaurant.`,
@@ -91,7 +90,7 @@ export const simpleRagFlow = defineFlow(
     inputSchema: z.string(),
     outputSchema: z.string(),
   },
-  async (query) => {
+  async (query: any) => {
     const ragResponse = await runFlow(menuSuggestionFlow, query);
     return ragResponse;
   }
