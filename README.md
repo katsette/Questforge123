@@ -1,19 +1,19 @@
-# QuestForge - D&D Companion App
+# QuestForge - Tabletop Companion App
 
-QuestForge is a comprehensive web application designed to enhance your Dungeons & Dragons gaming experience. Built with modern web technologies, it provides tools for campaign management, character sheets, real-time chat, dice rolling, and AI-powered assistance for Dungeon Masters.
+QuestForge is a comprehensive web application designed to enhance your tabletop gaming experience. Built with modern web technologies, it provides tools for campaign management, character sheets, real-time chat, dice rolling, and AI-powered assistance for Game Masters.
 
 ## 🚀 Features
 
 ### Core Features
 - **User Authentication & Profiles**: Secure registration/login with customizable user profiles
-- **Campaign Management**: Create and manage D&D campaigns with public/private settings
-- **Character Sheets**: Full-featured D&D 5e character sheets with automatic calculations
+- **Campaign Management**: Create and manage tabletop campaigns with public/private settings
+- **Character Sheets**: Full-featured character sheets with automatic calculations
 - **Real-time Chat**: WebSocket-powered chat system with multiple room support
-- **Dice Roller**: Advanced dice rolling with D&D notation support (2d6+3, advantage/disadvantage)
-- **AI Assistance**: AI-powered plot suggestions and story help for DMs
+- **Dice Roller**: Advanced dice rolling with standard notation support (2d6+3, advantage/disadvantage)
+- **AI Assistance**: AI-powered plot suggestions and story help for Game Masters
 
 ### Advanced Features
-- **Multi-room Chat**: Separate channels for different types of communication (IC, OOC, DM-only)
+- **Multi-room Chat**: Separate channels for different types of communication (IC, OOC, GM-only)
 - **Campaign Invites**: Invite players via invite codes or direct invitations
 - **Character Management**: Upload, edit, and share character sheets within campaigns
 - **Session Logging**: Track game sessions and campaign statistics
@@ -135,7 +135,7 @@ The frontend React application will be available in the `frontend` directory.
 
 ## 🎲 Dice Rolling
 
-QuestForge supports standard D&D dice notation:
+QuestForge supports standard tabletop dice notation:
 
 - `1d20` - Single twenty-sided die
 - `2d6+3` - Two six-sided dice plus 3
@@ -157,13 +157,13 @@ Special features:
 
 ### Campaign Model
 - Basic info (name, description, system)
-- DM and player management
+- GM and player management
 - Settings (public/private, level ranges, allowed classes)
 - Chat room configurations
 - Session tracking
 
 ### Character Model
-- Complete D&D 5e character sheet
+- Complete character sheet
 - Ability scores with automatic modifier calculation
 - Skills, features, equipment, spellcasting
 - Currency, description, and notes
@@ -238,7 +238,7 @@ The application is configured for deployment on Render.com:
 
 QuestForge is designed to integrate with AI services for:
 
-- Plot and story suggestions for DMs
+- Plot and story suggestions for Game Masters
 - Character creation assistance
 - Campaign idea generation
 - Rule clarifications and help
@@ -280,9 +280,9 @@ We welcome contributions to QuestForge! Please feel free to:
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🎮 Getting Started with D&D
+## 🎮 Getting Started with Tabletop Gaming
 
-New to D&D? QuestForge is designed to be beginner-friendly while providing advanced features for experienced players. Check out our documentation for guides on:
+New to tabletop gaming? QuestForge is designed to be beginner-friendly while providing advanced features for experienced players. Check out our documentation for guides on:
 
 - Creating your first character
 - Joining a campaign

@@ -189,7 +189,7 @@ const LoginPage = () => {
           className="text-center"
         >
           <p className="text-sm text-gray-400">
-            © 2024 QuestForge. Built for the D&D community.
+            © 2024 QuestForge. Built for the tabletop gaming community.
           </p>
         </motion.div>
       </div>

@@ -52,7 +52,7 @@ const LandingPage = () => {
             >
               Forge Epic
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-violet-400 block">
-                D&D Adventures
+                Tabletop Adventures
               </span>
             </motion.h1>
 
@@ -62,7 +62,7 @@ const LandingPage = () => {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="text-xl text-gray-300 mb-8 leading-relaxed"
             >
-              The ultimate companion for Dungeons & Dragons players and Dungeon Masters.
+              The ultimate companion for tabletop gaming players and Game Masters.
               Manage campaigns, create characters, chat in real-time, and get AI-powered
               assistance for your adventures.
             </motion.p>
@@ -93,7 +93,7 @@ const LandingPage = () => {
         <div className="relative z-10 px-6 py-24">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl font-bold text-white text-center mb-16">
-              Everything You Need for D&D
+              Everything You Need for Tabletop Gaming
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -126,7 +126,7 @@ const LandingPage = () => {
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-3">Character Sheets</h3>
                 <p className="text-gray-300">
-                  Complete D&D 5e character sheets with automatic calculations.
+                  Complete character sheets with automatic calculations.
                   Create, edit, and share your characters with your party.
                 </p>
               </motion.div>
@@ -160,7 +160,7 @@ const LandingPage = () => {
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-3">Dice Roller</h3>
                 <p className="text-gray-300">
-                  Advanced dice rolling with full D&D notation support.
+                  Advanced dice rolling with full standard notation support.
                   Roll with advantage, disadvantage, and complex modifiers.
                 </p>
               </motion.div>
@@ -222,7 +222,7 @@ const LandingPage = () => {
         <footer className="relative z-10 px-6 py-8 border-t border-white/20">
           <div className="max-w-6xl mx-auto text-center">
             <p className="text-gray-400">
-              © 2024 QuestForge. Built for the D&D community with ❤️
+              © 2024 QuestForge. Built for the tabletop gaming community with ❤️
             </p>
           </div>
         </footer>

@@ -123,7 +123,7 @@ const Dashboard = () => {
                 Create Character
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Build your next D&D character
+                Build your next tabletop character
               </p>
             </div>
           </Link>
@@ -189,7 +189,7 @@ const Dashboard = () => {
                 <span className="text-white text-xs">1</span>
               </div>
               <p className="text-gray-700 dark:text-gray-300">
-                <strong>Create your first character</strong> - Head to the Characters section to build your D&D character sheet
+                <strong>Create your first character</strong> - Head to the Characters section to build your tabletop character sheet
               </p>
             </div>
             <div className="flex items-start space-x-3">
@@ -197,7 +197,7 @@ const Dashboard = () => {
                 <span className="text-white text-xs">2</span>
               </div>
               <p className="text-gray-700 dark:text-gray-300">
-                <strong>Join a campaign</strong> - Browse public campaigns or ask a DM for an invite code
+                <strong>Join a campaign</strong> - Browse public campaigns or ask a GM for an invite code
               </p>
             </div>
             <div className="flex items-start space-x-3">

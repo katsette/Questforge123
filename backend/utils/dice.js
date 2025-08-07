@@ -219,7 +219,7 @@ function isValidDiceNotation(notation) {
 }
 
 /**
- * Get common D&D dice presets
+ * Get common tabletop dice presets
  * @returns {array} Array of common dice notations
  */
 function getCommonDicePresets() {
