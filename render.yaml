@@ -8,16 +8,21 @@ services:
       echo "📍 Current directory: $PWD"
       echo "📂 Files available:"
       ls -la
-      echo "📦 Installing root dependencies..."
+      echo "🔍 Package manager detection:"
+      which npm && echo "npm available" || echo "npm not found"
+      which yarn && echo "yarn available" || echo "yarn not found"
+      echo "📦 Installing root dependencies with npm..."
       npm install
       echo "🎨 Building frontend..."
-      cd frontend && npm ci && npm run build && cd ..
-      echo "🔧 Installing backend..."
-      cd backend && npm ci && cd ..
-      echo "✅ Verifying build..."
-      ls -la frontend/build/index.html || echo "Frontend build missing!"
-      echo "🚀 Build complete!"
-    startCommand: npm start
+      cd frontend && npm install && npm run build && cd ..
+      echo "🔧 Installing backend dependencies..."
+      cd backend && npm install && cd ..
+      echo "✅ Verifying build results..."
+      ls -la frontend/build/index.html && echo "Frontend build SUCCESS!" || echo "Frontend build FAILED!"
+      echo "📂 Frontend build directory contents:"
+      ls -la frontend/build/ || echo "Build directory not found"
+      echo "🚀 Build process complete!"
+    startCommand: "node start.js"
     envVars:
       - key: NODE_ENV
         value: production
