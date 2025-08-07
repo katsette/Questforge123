@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 require('dotenv').config();
 
 const { connectDB } = require('./config/database');
@@ -78,6 +79,19 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Serve React frontend static files in production
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from React build
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  
+  // Handle React Router - send all non-api requests to React app
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+    }
+  });
+}
+
 // Socket.IO connection handling
 io.use(socketAuth);
 
@@ -126,8 +140,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
+// 404 handler for API routes only
+app.use('/api/*', (req, res) => {
   res.status(404).json({
     error: 'Not Found',
     message: 'The requested resource was not found'
