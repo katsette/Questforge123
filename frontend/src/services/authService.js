@@ -4,7 +4,7 @@ import axios from 'axios';
 // In production, use relative URLs (same domain as frontend)
 // In development, use localhost:5000
 const API_BASE_URL = process.env.REACT_APP_API_URL || 
-  (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
+  (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5001');
 
 const fullApiUrl = `${API_BASE_URL}/api`;
 console.log('🔧 API Configuration:', {
