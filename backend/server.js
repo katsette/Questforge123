@@ -213,9 +213,10 @@ app.use('/api/*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 
-server.listen(PORT, () => {
-  console.log(`🚀 QuestForge server running on port ${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`🚀 QuestForge server running on ${HOST}:${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
   console.log(`📡 Socket.IO server ready for connections`);
 });
