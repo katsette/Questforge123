@@ -20,6 +20,7 @@ import CharactersPage from './pages/CharactersPage';
 import CharacterDetailPage from './pages/CharacterDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import DiceRollerPage from './pages/DiceRollerPage';
+import FirebaseDemo from './components/FirebaseDemo';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -94,6 +95,10 @@ function App() {
                   <RegisterPage />
                 </PublicRoute>
               } 
+            />
+            <Route 
+              path="/firebase-demo" 
+              element={<FirebaseDemo />} 
             />
 
             {/* Protected routes */}
