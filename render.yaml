@@ -8,6 +8,8 @@ services:
       echo "📍 Current directory: $PWD"
       echo "📂 Files available:"
       ls -la
+      echo "🔧 Configuring npm usage..."
+      node use-npm.js
       echo "🔍 Package manager detection:"
       which npm && echo "npm available" || echo "npm not found"
       which yarn && echo "yarn available" || echo "yarn not found"
