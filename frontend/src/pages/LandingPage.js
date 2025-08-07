@@ -222,7 +222,7 @@ const LandingPage = () => {
         <footer className="relative z-10 px-6 py-8 border-t border-white/20">
           <div className="max-w-6xl mx-auto text-center">
             <p className="text-gray-400">
-              © 2024 QuestForge. Built for the tabletop gaming community with ❤️
+              © 2024 QuestForge. Built for the tabletop gaming community with ❤️ This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd.
             </p>
           </div>
         </footer>

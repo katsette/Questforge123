@@ -191,7 +191,7 @@ const LoginPage = () => {
           className="text-center"
         >
           <p className="text-sm text-gray-400">
-            © 2024 QuestForge. Built for the tabletop gaming community.
+            © 2024 QuestForge. Built for the tabletop gaming community. This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd.
           </p>
         </motion.div>
       </div>
