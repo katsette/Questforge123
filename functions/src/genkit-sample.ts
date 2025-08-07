@@ -1,54 +1,98 @@
-import { genkit, z } from "genkit";
-import { googleAI, gemini20Flash } from "@genkit-ai/googleai";
-import { onCallGenkit } from "firebase-functions/https"; 
-import { defineSecret } from "firebase-functions/params";
-const apiKey = defineSecret("AIzaSyB1RRg88wnOPGmxdCW-SH_LD-XYcAnN9wQ");
+import { generate } from '@genkit-ai/ai';
+import { configureGenkit } from '@genkit-ai/core';
+import { defineFlow, runFlow } from '@genkit-ai/flow';
+import { geminiPro } from '@genkit-ai/googleai';
+import * as z from 'zod';
+import { setGlobalOptions } from 'firebase-functions';
+import { defineSecret } from 'firebase-functions/params';
 
-import { enableFirebaseTelemetry } from "@genkit-ai/firebase";
-import { setGlobalOptions } from "firebase-functions";
-enableFirebaseTelemetry();
+// For cost control, you can set the maximum number of containers that can be
+// running at the same time. This helps mitigate the impact of unexpected
+// traffic spikes by instead downgrading performance. This limit is a
+// per-function limit. You can override the limit for each function using the
+// `maxInstances` option in the function's options, e.g.
+// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
+// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
+// functions should each use functions.runWith({ maxInstances: 10 }) instead.
+// In the v1 API, each function can only serve one request per container, so
+// this will be the maximum concurrent request count.
+setGlobalOptions({ maxInstances: 10 });
 
-const ai = genkit({
-  plugins: [
-    googleAI(),
+
+configureGenkit({
+
+    geminiPro({
+      apiKey: apiKey.value(),
+      // The Gemini API is not yet available in all regions.
+      // See https://ai.google.dev/models/regions
+      // for more information.
+      // To use a different region, you can specify it here, e.g.:
+      // apiRegion: 'asia-northeast1',
+    }),
   ],
+  logLevel: 'debug',
+  // For Genkit to connect to your Firebase project, you'll need to
+  // have Firebase Admin SDK credentials.
+  // If you are running Genkit locally, and have authenticated via the Firebase CLI,
+  // Genkit will detect your credentials automatically.
+  // If you are deploying Genkit to a Cloud Function, the credentials will
+  // be available automatically.
+  // If you are running Genkit in a different environment, you may need to
+  // explicitly provide them.
+  // firebase: {
+  //   projectId: 'YOUR_PROJECT_ID',
+  // },
 });
 
-const menuSuggestionFlow = ai.defineFlow(
+export const menuSuggestionFlow = defineFlow(
   {
-    name: "menuSuggestionFlow",
-    inputSchema: z.string()
-      .describe("A restaurant theme")
-      .default("seafood"),
+    name: 'menuSuggestionFlow',
+    inputSchema: z.string(),
     outputSchema: z.string(),
-    streamSchema: z.string(),
   },
-  async (subject, { sendChunk }) => {
-    // Construct a request and send it to the model API.
-    const prompt = `Suggest an item for the menu of a ${subject} themed restaurant`;
-    const { response, stream } = ai.generateStream({
-      model: gemini20Flash,
-      prompt: prompt,
+  async (subject) => {
+    const llmResponse = await generate({
+      model: geminiPro,
+      prompt: `Suggest a name for a menu item for a ${subject} themed restaurant.`,
       config: {
-        temperature: 1,
+        temperature: 0.8,
       },
     });
 
-    for await (const chunk of stream) {
-      sendChunk(chunk.text);
-    }
-
-    // Handle the response from the model API. In this sample, we just
-    // convert it to a string, but more complicated flows might coerce the
-    // response into structured output or chain the response into another
-    // LLM call, etc.
-    return (await response).text;
+    return llmResponse.text();
   }
 );
 
-export const menuSuggestion = onCallGenkit(
-  {secrets: [apiKey],},
-  menuSuggestionFlow
+export const evaluateMenuSuggestion = defineFlow(
+  {
+    name: 'evaluateMenuSuggestion',
+    inputSchema: z.object({
+      subject: z.string(),
+      menuName: z.string(),
+    }),
+    outputSchema: z.string(),
+  },
+  async ({ subject, menuName }) => {
+    const llmResponse = await generate({
+      model: geminiPro,
+      prompt: `Is "${menuName}" a good name for a menu item for a ${subject} themed restaurant?`,
+      config: {
+        temperature: 0.2,
+      },
+    });
+
+    return llmResponse.text();
+  }
 );
 
-setGlobalOptions({ maxInstances: 10 });
+export const simpleRagFlow = defineFlow(
+  {
+    name: 'simpleRagFlow',
+    inputSchema: z.string(),
+    outputSchema: z.string(),
+  },
+  async (query) => {
+    const ragResponse = await runFlow(menuSuggestionFlow, query);
+    return ragResponse;
+  }
+);
