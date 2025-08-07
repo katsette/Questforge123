@@ -215,7 +215,14 @@ const CampaignsPage = () => {
           placeholder="Search campaigns by name, description, or GM..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          onClick={(e) => {
+            console.log('Search input clicked:', e.target);
+            e.target.focus();
+          }}
+          onFocus={() => console.log('Search input focused')}
           className="input-primary pl-10 pr-4"
+          style={{ pointerEvents: 'auto', zIndex: 10 }}
+          autoComplete="off"
         />
       </div>
 
