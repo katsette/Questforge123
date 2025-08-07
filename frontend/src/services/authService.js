@@ -6,11 +6,20 @@ import axios from 'axios';
 const API_BASE_URL = process.env.REACT_APP_API_URL || 
   (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
+const fullApiUrl = `${API_BASE_URL}/api`;
+console.log('🔧 API Configuration:', {
+  NODE_ENV: process.env.NODE_ENV,
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+  API_BASE_URL,
+  fullApiUrl
+});
+
 const api = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: fullApiUrl,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 10000 // 10 second timeout
 });
 
 // Add token to requests if available
@@ -35,6 +44,17 @@ api.interceptors.response.use(
 );
 
 export const authService = {
+  // Health check - useful for debugging
+  async healthCheck() {
+    try {
+      const response = await api.get('/health');
+      console.log('✅ Health check successful:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Health check failed:', error);
+      throw error;
+    }
+  },
   // Register new user
   async register(userData) {
     try {

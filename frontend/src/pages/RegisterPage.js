@@ -21,9 +21,22 @@ const RegisterPage = () => {
 
   const onSubmit = async (data) => {
     try {
+      // First, let's test if the API is reachable
+      console.log('🧪 Testing API connectivity...');
+      const { authService } = await import('../services/authService');
+      
+      try {
+        await authService.healthCheck();
+        console.log('✅ API is reachable, proceeding with registration...');
+      } catch (healthError) {
+        console.error('❌ API health check failed:', healthError);
+        // Continue anyway, but we know there's a connectivity issue
+      }
+      
       await registerUser(data);
       navigate('/dashboard');
     } catch (error) {
+      console.error('Registration submission error:', error);
       if (error.response?.data?.details) {
         error.response.data.details.forEach(detail => {
           setError(detail.path[0], {
