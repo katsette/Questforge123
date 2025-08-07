@@ -1,150 +1,119 @@
-const mongoose = require('mongoose');
+const { getDB } = require('../config/database');
 const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    minlength: 3,
-    maxlength: 30
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
-  password: {
-    type: String,
-    required: true,
-    minlength: 6
-  },
-  profile: {
-    displayName: {
-      type: String,
-      trim: true,
-      maxlength: 50
-    },
-    avatar: {
-      type: String, // URL or file path
-      default: null
-    },
-    bio: {
-      type: String,
-      maxlength: 500
-    },
-    preferredSystem: {
-      type: String,
-      enum: ['5e', '3.5e', 'pathfinder', 'other'],
-      default: '5e'
-    },
-    timezone: {
-      type: String,
-      default: 'UTC'
-    }
-  },
-  campaigns: [{
-    campaign: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Campaign'
-    },
-    role: {
-      type: String,
-      enum: ['dm', 'player'],
-      required: true
-    },
-    joinedAt: {
-      type: Date,
-      default: Date.now
-    },
-    isActive: {
-      type: Boolean,
-      default: true
-    }
-  }],
-  characters: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Character'
-  }],
-  settings: {
-    emailNotifications: {
-      type: Boolean,
-      default: true
-    },
-    pushNotifications: {
-      type: Boolean,
-      default: true
-    },
-    theme: {
-      type: String,
-      enum: ['light', 'dark', 'auto'],
-      default: 'auto'
-    }
-  },
-  lastActive: {
-    type: Date,
-    default: Date.now
-  },
-  isOnline: {
-    type: Boolean,
-    default: false
-  },
-  refreshToken: {
-    type: String
+class User {
+  static create(userData) {
+    const db = getDB();
+    const { username, email, password, firstName = null, lastName = null, avatar = null } = userData;
+    
+    const stmt = db.prepare(`
+      INSERT INTO users (username, email, password, firstName, lastName, avatar)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    
+    const result = stmt.run(username, email, password, firstName, lastName, avatar);
+    
+    return this.findById(result.lastInsertRowid);
   }
-}, {
-  timestamps: true
-});
 
-// Indexes
-userSchema.index({ username: 1 });
-userSchema.index({ email: 1 });
-userSchema.index({ 'campaigns.campaign': 1 });
-
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(12);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
+  static findById(id) {
+    const db = getDB();
+    const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+    return stmt.get(id);
   }
-});
 
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
-};
-
-// Update last active
-userSchema.methods.updateLastActive = function() {
-  this.lastActive = new Date();
-  return this.save();
-};
-
-// Get user's campaigns
-userSchema.methods.getCampaigns = function(role = null) {
-  let campaigns = this.campaigns.filter(c => c.isActive);
-  if (role) {
-    campaigns = campaigns.filter(c => c.role === role);
+  static findByEmail(email) {
+    const db = getDB();
+    const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
+    return stmt.get(email);
   }
-  return campaigns;
-};
 
-// JSON transform
-userSchema.set('toJSON', {
-  transform: function(doc, ret) {
-    delete ret.password;
-    delete ret.refreshToken;
-    delete ret.__v;
-    return ret;
+  static findByUsername(username) {
+    const db = getDB();
+    const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
+    return stmt.get(username);
   }
-});
 
-module.exports = mongoose.model('User', userSchema);
+  static findAll() {
+    const db = getDB();
+    const stmt = db.prepare('SELECT id, username, email, firstName, lastName, avatar, createdAt FROM users');
+    return stmt.all();
+  }
+
+  static updateById(id, updateData) {
+    const db = getDB();
+    const fields = [];
+    const values = [];
+    
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(updateData[key]);
+      }
+    });
+    
+    if (fields.length === 0) return this.findById(id);
+    
+    values.push(new Date().toISOString()); // updatedAt
+    values.push(id);
+    
+    const stmt = db.prepare(`
+      UPDATE users 
+      SET ${fields.join(', ')}, updatedAt = ?
+      WHERE id = ?
+    `);
+    
+    stmt.run(...values);
+    return this.findById(id);
+  }
+
+  static deleteById(id) {
+    const db = getDB();
+    const stmt = db.prepare('DELETE FROM users WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  static async comparePassword(plainPassword, hashedPassword) {
+    return bcrypt.compare(plainPassword, hashedPassword);
+  }
+
+  static async hashPassword(password) {
+    const salt = await bcrypt.genSalt(10);
+    return bcrypt.hash(password, salt);
+  }
+
+  // Get user's campaigns
+  static getUserCampaigns(userId) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT c.*, u.username as dmUsername
+      FROM campaigns c
+      JOIN campaign_members cm ON c.id = cm.campaignId
+      JOIN users u ON c.dmId = u.id
+      WHERE cm.userId = ?
+    `);
+    return stmt.all(userId);
+  }
+
+  // Get user's characters
+  static getUserCharacters(userId) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT ch.*, c.name as campaignName
+      FROM characters ch
+      LEFT JOIN campaigns c ON ch.campaignId = c.id
+      WHERE ch.userId = ?
+    `);
+    return stmt.all(userId);
+  }
+
+  // Convert to JSON (remove sensitive fields)
+  static toJSON(user) {
+    if (!user) return null;
+    const { password, ...safeUser } = user;
+    return safeUser;
+  }
+}
+
+module.exports = User;

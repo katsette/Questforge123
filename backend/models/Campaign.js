@@ -1,294 +1,170 @@
-const mongoose = require('mongoose');
+const { getDB } = require('../config/database');
 
-const campaignSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 100
-  },
-  description: {
-    type: String,
-    maxlength: 1000
-  },
-  system: {
-    type: String,
-    enum: ['5e', '3.5e', 'pathfinder', 'other'],
-    required: true,
-    default: '5e'
-  },
-  dm: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  players: [{
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    character: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Character'
-    },
-    joinedAt: {
-      type: Date,
-      default: Date.now
-    },
-    isActive: {
-      type: Boolean,
-      default: true
-    },
-    permissions: {
-      canInviteOthers: {
-        type: Boolean,
-        default: false
-      },
-      canManageCharacters: {
-        type: Boolean,
-        default: true
-      }
-    }
-  }],
-  settings: {
-    isPublic: {
-      type: Boolean,
-      default: false
-    },
-    maxPlayers: {
-      type: Number,
-      default: 6,
-      min: 1,
-      max: 20
-    },
-    level: {
-      min: {
-        type: Number,
-        default: 1,
-        min: 1,
-        max: 20
-      },
-      max: {
-        type: Number,
-        default: 20,
-        min: 1,
-        max: 20
-      }
-    },
-    allowedRaces: [{
-      type: String
-    }],
-    allowedClasses: [{
-      type: String
-    }],
-    useHomebrewRules: {
-      type: Boolean,
-      default: false
-    },
-    enableDiceLogging: {
-      type: Boolean,
-      default: true
-    },
-    enableCharacterSheets: {
-      type: Boolean,
-      default: true
-    }
-  },
-  status: {
-    type: String,
-    enum: ['planning', 'active', 'paused', 'completed', 'cancelled'],
-    default: 'planning'
-  },
-  schedule: {
-    frequency: {
-      type: String,
-      enum: ['weekly', 'biweekly', 'monthly', 'irregular'],
-      default: 'weekly'
-    },
-    dayOfWeek: {
-      type: Number, // 0-6, Sunday = 0
-      min: 0,
-      max: 6
-    },
-    time: {
-      type: String // Format: "HH:MM"
-    },
-    timezone: {
-      type: String,
-      default: 'UTC'
-    },
-    nextSession: {
-      type: Date
-    }
-  },
-  chatRooms: [{
-    name: {
-      type: String,
-      required: true
-    },
-    type: {
-      type: String,
-      enum: ['general', 'ooc', 'ic', 'dm-only', 'custom'],
-      default: 'general'
-    },
-    isDefault: {
-      type: Boolean,
-      default: false
-    },
-    permissions: {
-      dmOnly: {
-        type: Boolean,
-        default: false
-      },
-      allowedRoles: [{
-        type: String,
-        enum: ['dm', 'player', 'observer']
-      }]
-    }
-  }],
-  inviteCode: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  tags: [{
-    type: String,
-    trim: true,
-    lowercase: true
-  }],
-  banner: {
-    type: String // URL or file path
-  },
-  notes: {
-    public: {
-      type: String,
-      maxlength: 2000
-    },
-    private: {
-      type: String, // DM only
-      maxlength: 5000
-    }
-  },
-  stats: {
-    sessionsPlayed: {
-      type: Number,
-      default: 0
-    },
-    totalPlayTime: {
-      type: Number,
-      default: 0 // in minutes
-    },
-    averageSessionLength: {
-      type: Number,
-      default: 0 // in minutes
-    }
+class Campaign {
+  static create(campaignData) {
+    const db = getDB();
+    const { name, description = null, dmId, isActive = true } = campaignData;
+    
+    const stmt = db.prepare(`
+      INSERT INTO campaigns (name, description, dmId, isActive)
+      VALUES (?, ?, ?, ?)
+    `);
+    
+    const result = stmt.run(name, description, dmId, isActive ? 1 : 0);
+    
+    // Add DM to campaign members
+    this.addMember(result.lastInsertRowid, dmId, 'dm');
+    
+    return this.findById(result.lastInsertRowid);
   }
-}, {
-  timestamps: true
-});
 
-// Indexes
-campaignSchema.index({ dm: 1 });
-campaignSchema.index({ 'players.user': 1 });
-campaignSchema.index({ status: 1 });
-campaignSchema.index({ 'settings.isPublic': 1 });
-campaignSchema.index({ inviteCode: 1 });
-campaignSchema.index({ tags: 1 });
-
-// Generate invite code
-campaignSchema.methods.generateInviteCode = function() {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 8; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  static findById(id) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT c.*, u.username as dmUsername
+      FROM campaigns c
+      JOIN users u ON c.dmId = u.id
+      WHERE c.id = ?
+    `);
+    return stmt.get(id);
   }
-  this.inviteCode = result;
-  return result;
-};
 
-// Add player to campaign
-campaignSchema.methods.addPlayer = function(userId, characterId = null) {
-  const existingPlayer = this.players.find(p => p.user.toString() === userId.toString());
-  
-  if (existingPlayer) {
-    if (!existingPlayer.isActive) {
-      existingPlayer.isActive = true;
-      existingPlayer.joinedAt = new Date();
-    }
-    if (characterId) {
-      existingPlayer.character = characterId;
-    }
-  } else {
-    this.players.push({
-      user: userId,
-      character: characterId,
-      joinedAt: new Date(),
-      isActive: true
+  static findAll() {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT c.*, u.username as dmUsername
+      FROM campaigns c
+      JOIN users u ON c.dmId = u.id
+      ORDER BY c.createdAt DESC
+    `);
+    return stmt.all();
+  }
+
+  static findByDM(dmId) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT c.*, u.username as dmUsername
+      FROM campaigns c
+      JOIN users u ON c.dmId = u.id
+      WHERE c.dmId = ?
+      ORDER BY c.createdAt DESC
+    `);
+    return stmt.all(dmId);
+  }
+
+  static updateById(id, updateData) {
+    const db = getDB();
+    const fields = [];
+    const values = [];
+    
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(updateData[key]);
+      }
     });
+    
+    if (fields.length === 0) return this.findById(id);
+    
+    values.push(new Date().toISOString()); // updatedAt
+    values.push(id);
+    
+    const stmt = db.prepare(`
+      UPDATE campaigns 
+      SET ${fields.join(', ')}, updatedAt = ?
+      WHERE id = ?
+    `);
+    
+    stmt.run(...values);
+    return this.findById(id);
   }
-  
-  return this.save();
-};
 
-// Remove player from campaign
-campaignSchema.methods.removePlayer = function(userId) {
-  const player = this.players.find(p => p.user.toString() === userId.toString());
-  if (player) {
-    player.isActive = false;
+  static deleteById(id) {
+    const db = getDB();
+    const stmt = db.prepare('DELETE FROM campaigns WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
   }
-  return this.save();
-};
 
-// Get active players
-campaignSchema.methods.getActivePlayers = function() {
-  return this.players.filter(p => p.isActive);
-};
-
-// Check if user can join
-campaignSchema.methods.canUserJoin = function() {
-  const activePlayers = this.getActivePlayers();
-  return activePlayers.length < this.settings.maxPlayers;
-};
-
-// Create default chat rooms
-campaignSchema.methods.createDefaultChatRooms = function() {
-  this.chatRooms = [
-    {
-      name: 'General',
-      type: 'general',
-      isDefault: true,
-      permissions: { dmOnly: false, allowedRoles: ['dm', 'player'] }
-    },
-    {
-      name: 'Out of Character',
-      type: 'ooc',
-      isDefault: false,
-      permissions: { dmOnly: false, allowedRoles: ['dm', 'player'] }
-    },
-    {
-      name: 'In Character',
-      type: 'ic',
-      isDefault: false,
-      permissions: { dmOnly: false, allowedRoles: ['dm', 'player'] }
-    },
-    {
-      name: 'DM Notes',
-      type: 'dm-only',
-      isDefault: false,
-      permissions: { dmOnly: true, allowedRoles: ['dm'] }
-    }
-  ];
-  return this;
-};
-
-// Validate level range
-campaignSchema.pre('save', function(next) {
-  if (this.settings.level.min > this.settings.level.max) {
-    next(new Error('Minimum level cannot be greater than maximum level'));
-  } else {
-    next();
+  // Campaign members management
+  static addMember(campaignId, userId, role = 'player') {
+    const db = getDB();
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO campaign_members (campaignId, userId, role)
+      VALUES (?, ?, ?)
+    `);
+    return stmt.run(campaignId, userId, role);
   }
-});
 
-module.exports = mongoose.model('Campaign', campaignSchema);
+  static removeMember(campaignId, userId) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      DELETE FROM campaign_members 
+      WHERE campaignId = ? AND userId = ?
+    `);
+    const result = stmt.run(campaignId, userId);
+    return result.changes > 0;
+  }
+
+  static getMembers(campaignId) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT u.id, u.username, u.email, u.firstName, u.lastName, u.avatar, 
+             cm.role, cm.joinedAt
+      FROM campaign_members cm
+      JOIN users u ON cm.userId = u.id
+      WHERE cm.campaignId = ?
+      ORDER BY cm.role DESC, cm.joinedAt ASC
+    `);
+    return stmt.all(campaignId);
+  }
+
+  static isMember(campaignId, userId) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT 1 FROM campaign_members 
+      WHERE campaignId = ? AND userId = ?
+    `);
+    return !!stmt.get(campaignId, userId);
+  }
+
+  static getMemberRole(campaignId, userId) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT role FROM campaign_members 
+      WHERE campaignId = ? AND userId = ?
+    `);
+    const result = stmt.get(campaignId, userId);
+    return result ? result.role : null;
+  }
+
+  // Get campaign characters
+  static getCharacters(campaignId) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT ch.*, u.username as playerUsername
+      FROM characters ch
+      JOIN users u ON ch.userId = u.id
+      WHERE ch.campaignId = ?
+      ORDER BY ch.createdAt ASC
+    `);
+    return stmt.all(campaignId);
+  }
+
+  // Get recent messages
+  static getRecentMessages(campaignId, limit = 50) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT m.*, u.username, ch.name as characterName
+      FROM messages m
+      JOIN users u ON m.userId = u.id
+      LEFT JOIN characters ch ON m.characterId = ch.id
+      WHERE m.campaignId = ?
+      ORDER BY m.createdAt DESC
+      LIMIT ?
+    `);
+    return stmt.all(campaignId, limit).reverse();
+  }
+}
+
+module.exports = Campaign;

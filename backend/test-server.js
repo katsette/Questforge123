@@ -88,7 +88,7 @@ app.post('/api/test/auth', (req, res) => {
   
   res.json({
     message: 'Authentication endpoint working',
-    note: 'This is a test endpoint - full auth requires MongoDB',
+    note: 'This is a test endpoint - full auth requires SQLite database',
     user: {
       username,
       id: 'test-user-id',
@@ -129,7 +129,7 @@ app.listen(PORT, () => {
   console.log('  POST /api/test/dice - Test dice rolling');
   console.log('  POST /api/test/auth - Test authentication');
   console.log('');
-  console.log('📝 Note: Full features require MongoDB connection');
-  console.log('   To set up MongoDB: docker run -d -p 27017:27017 mongo:5.0');
-  console.log('   Or install MongoDB: https://docs.mongodb.com/manual/installation/');
+  console.log('📝 Note: Full features now use SQLite database');
+  console.log('   SQLite database will be created automatically at ./data/questforge.db');
+  console.log('   No additional setup required!');
 });

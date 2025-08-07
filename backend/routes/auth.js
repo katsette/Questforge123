@@ -38,45 +38,43 @@ router.post('/register', [
       });
     }
 
-    const { username, email, password, displayName } = req.body;
+    const { username, email, password, firstName, lastName } = req.body;
 
     // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
-    });
+    const existingUserByEmail = User.findByEmail(email);
+    const existingUserByUsername = User.findByUsername(username);
 
-    if (existingUser) {
+    if (existingUserByEmail) {
       return res.status(409).json({
         error: 'User already exists',
-        message: existingUser.email === email ? 
-          'Email already registered' : 'Username already taken'
+        message: 'Email already registered'
       });
     }
 
-    // Create new user
-    const user = new User({
+    if (existingUserByUsername) {
+      return res.status(409).json({
+        error: 'User already exists',
+        message: 'Username already taken'
+      });
+    }
+
+    // Hash password and create new user
+    const hashedPassword = await User.hashPassword(password);
+    const user = User.create({
       username,
       email,
-      password,
-      profile: {
-        displayName: displayName || username
-      }
+      password: hashedPassword,
+      firstName,
+      lastName
     });
 
-    await user.save();
-
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user.id);
 
     res.status(201).json({
       message: 'User registered successfully',
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        profile: user.profile
-      }
+      user: User.toJSON(user)
     });
 
   } catch (error) {
@@ -109,12 +107,10 @@ router.post('/login', [
     const { login, password } = req.body;
 
     // Find user by email or username
-    const user = await User.findOne({
-      $or: [
-        { email: login.toLowerCase() },
-        { username: login }
-      ]
-    });
+    let user = User.findByEmail(login.toLowerCase());
+    if (!user) {
+      user = User.findByUsername(login);
+    }
 
     if (!user) {
       return res.status(401).json({
@@ -124,7 +120,7 @@ router.post('/login', [
     }
 
     // Check password
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await User.comparePassword(password, user.password);
     if (!isMatch) {
       return res.status(401).json({
         error: 'Invalid credentials',
@@ -133,23 +129,19 @@ router.post('/login', [
     }
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user.id);
 
-    // Update user status
-    user.isOnline = true;
-    user.lastActive = new Date();
-    await user.save();
+    // Get user campaigns and characters
+    const userCampaigns = User.getUserCampaigns(user.id);
+    const userCharacters = User.getUserCharacters(user.id);
 
     res.json({
       message: 'Login successful',
       token,
       user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        profile: user.profile,
-        campaigns: user.campaigns,
-        settings: user.settings
+        ...User.toJSON(user),
+        campaigns: userCampaigns,
+        characters: userCharacters
       }
     });
 
@@ -165,10 +157,6 @@ router.post('/login', [
 // Logout user
 router.post('/logout', auth, async (req, res) => {
   try {
-    // Set user offline
-    req.user.isOnline = false;
-    await req.user.save();
-
     res.json({
       message: 'Logout successful'
     });
@@ -184,21 +172,15 @@ router.post('/logout', auth, async (req, res) => {
 // Get current user
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id)
-      .populate('campaigns.campaign', 'name description status')
-      .populate('characters', 'name basicInfo.class basicInfo.level status avatar');
+    const user = User.findById(req.user.id);
+    const userCampaigns = User.getUserCampaigns(req.user.id);
+    const userCharacters = User.getUserCharacters(req.user.id);
 
     res.json({
       user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        profile: user.profile,
-        campaigns: user.campaigns,
-        characters: user.characters,
-        settings: user.settings,
-        lastActive: user.lastActive,
-        isOnline: user.isOnline
+        ...User.toJSON(user),
+        campaigns: userCampaigns,
+        characters: userCharacters
       }
     });
   } catch (error) {
@@ -215,7 +197,7 @@ router.get('/verify', auth, (req, res) => {
   res.json({
     valid: true,
     user: {
-      id: req.user._id,
+      id: req.user.id,
       username: req.user.username,
       email: req.user.email
     }
@@ -243,10 +225,10 @@ router.put('/password', auth, [
     const { currentPassword, newPassword } = req.body;
 
     // Get user with password
-    const user = await User.findById(req.user._id);
+    const user = User.findById(req.user.id);
 
     // Verify current password
-    const isMatch = await user.comparePassword(currentPassword);
+    const isMatch = await User.comparePassword(currentPassword, user.password);
     if (!isMatch) {
       return res.status(401).json({
         error: 'Invalid password',
@@ -255,8 +237,8 @@ router.put('/password', auth, [
     }
 
     // Update password
-    user.password = newPassword;
-    await user.save();
+    const hashedPassword = await User.hashPassword(newPassword);
+    User.updateById(req.user.id, { password: hashedPassword });
 
     res.json({
       message: 'Password updated successfully'

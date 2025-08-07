@@ -13,7 +13,7 @@ const auth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password -refreshToken');
+    const user = User.findById(decoded.id);
     
     if (!user) {
       return res.status(401).json({ 
@@ -21,11 +21,8 @@ const auth = async (req, res, next) => {
         message: 'User not found' 
       });
     }
-
-    // Update last active time
-    await user.updateLastActive();
     
-    req.user = user;
+    req.user = User.toJSON(user);
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);

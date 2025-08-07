@@ -1,245 +1,178 @@
-const mongoose = require('mongoose');
+const { getDB } = require('../config/database');
 
-const messageSchema = new mongoose.Schema({
-  content: {
-    type: String,
-    required: true,
-    maxlength: 2000
-  },
-  author: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  campaign: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Campaign',
-    required: true
-  },
-  room: {
-    type: String,
-    required: true,
-    default: 'general'
-  },
-  type: {
-    type: String,
-    enum: ['message', 'dice', 'system', 'whisper', 'action', 'ooc', 'ic'],
-    default: 'message'
-  },
-  
-  // For dice rolls
-  diceRoll: {
-    formula: { type: String }, // e.g., "2d6+3"
-    result: { type: Number },
-    individual: [{ type: Number }], // individual die results
-    modifier: { type: Number, default: 0 },
-    reason: { type: String }, // what the roll was for
-    isPrivate: { type: Boolean, default: false }, // DM-only roll
-    advantage: { type: Boolean, default: false },
-    disadvantage: { type: Boolean, default: false }
-  },
-
-  // For whisper messages
-  whisper: {
-    to: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }
-  },
-
-  // Message metadata
-  isEdited: {
-    type: Boolean,
-    default: false
-  },
-  editedAt: {
-    type: Date
-  },
-  originalContent: {
-    type: String
-  },
-
-  // Reactions
-  reactions: [{
-    emoji: { type: String, required: true },
-    users: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }],
-    count: { type: Number, default: 0 }
-  }],
-
-  // Thread/Reply system
-  parentMessage: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Message'
-  },
-  replies: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Message'
-  }],
-
-  // Character context (if message sent as character)
-  character: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Character'
-  },
-
-  // Pinned message
-  isPinned: {
-    type: Boolean,
-    default: false
-  },
-  pinnedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  pinnedAt: {
-    type: Date
-  },
-
-  // Soft delete
-  isDeleted: {
-    type: Boolean,
-    default: false
-  },
-  deletedAt: {
-    type: Date
-  },
-  deletedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }
-
-}, {
-  timestamps: true
-});
-
-// Indexes for efficient queries
-messageSchema.index({ campaign: 1, room: 1, createdAt: -1 });
-messageSchema.index({ author: 1, createdAt: -1 });
-messageSchema.index({ type: 1 });
-messageSchema.index({ 'whisper.to': 1 });
-messageSchema.index({ parentMessage: 1 });
-messageSchema.index({ isPinned: 1 });
-messageSchema.index({ isDeleted: 1 });
-
-// Method to add reaction
-messageSchema.methods.addReaction = function(emoji, userId) {
-  let reaction = this.reactions.find(r => r.emoji === emoji);
-  
-  if (!reaction) {
-    reaction = { emoji, users: [], count: 0 };
-    this.reactions.push(reaction);
-  }
-  
-  if (!reaction.users.includes(userId)) {
-    reaction.users.push(userId);
-    reaction.count++;
-  }
-  
-  return this.save();
-};
-
-// Method to remove reaction
-messageSchema.methods.removeReaction = function(emoji, userId) {
-  const reaction = this.reactions.find(r => r.emoji === emoji);
-  
-  if (reaction) {
-    reaction.users = reaction.users.filter(id => id.toString() !== userId.toString());
-    reaction.count = reaction.users.length;
+class Message {
+  static create(messageData) {
+    const db = getDB();
+    const { 
+      content, 
+      type = 'text', 
+      userId, 
+      campaignId, 
+      characterId = null, 
+      isSystemMessage = false 
+    } = messageData;
     
-    if (reaction.count === 0) {
-      this.reactions = this.reactions.filter(r => r.emoji !== emoji);
-    }
+    const stmt = db.prepare(`
+      INSERT INTO messages (content, type, userId, campaignId, characterId, isSystemMessage)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    
+    const result = stmt.run(content, type, userId, campaignId, characterId, isSystemMessage ? 1 : 0);
+    
+    return this.findById(result.lastInsertRowid);
   }
-  
-  return this.save();
-};
 
-// Method to edit message
-messageSchema.methods.editContent = function(newContent) {
-  if (!this.isEdited) {
-    this.originalContent = this.content;
-    this.isEdited = true;
+  static findById(id) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT m.*, u.username, u.firstName, u.lastName, u.avatar,
+             ch.name as characterName, c.name as campaignName
+      FROM messages m
+      JOIN users u ON m.userId = u.id
+      JOIN campaigns c ON m.campaignId = c.id
+      LEFT JOIN characters ch ON m.characterId = ch.id
+      WHERE m.id = ?
+    `);
+    return stmt.get(id);
   }
-  this.content = newContent;
-  this.editedAt = new Date();
-  
-  return this.save();
-};
 
-// Method to soft delete
-messageSchema.methods.softDelete = function(userId) {
-  this.isDeleted = true;
-  this.deletedAt = new Date();
-  this.deletedBy = userId;
-  
-  return this.save();
-};
-
-// Method to pin message
-messageSchema.methods.pin = function(userId) {
-  this.isPinned = true;
-  this.pinnedBy = userId;
-  this.pinnedAt = new Date();
-  
-  return this.save();
-};
-
-// Method to unpin message
-messageSchema.methods.unpin = function() {
-  this.isPinned = false;
-  this.pinnedBy = undefined;
-  this.pinnedAt = undefined;
-  
-  return this.save();
-};
-
-// Static method to get recent messages for a campaign room
-messageSchema.statics.getRecentMessages = function(campaignId, room, limit = 50, before = null) {
-  let query = {
-    campaign: campaignId,
-    room: room,
-    isDeleted: false
-  };
-  
-  if (before) {
-    query.createdAt = { $lt: before };
+  static findByCampaign(campaignId, limit = 50, offset = 0) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT m.*, u.username, u.firstName, u.lastName, u.avatar,
+             ch.name as characterName
+      FROM messages m
+      JOIN users u ON m.userId = u.id
+      LEFT JOIN characters ch ON m.characterId = ch.id
+      WHERE m.campaignId = ?
+      ORDER BY m.createdAt DESC
+      LIMIT ? OFFSET ?
+    `);
+    return stmt.all(campaignId, limit, offset).reverse();
   }
-  
-  return this.find(query)
-    .populate('author', 'username profile.displayName profile.avatar')
-    .populate('character', 'name avatar')
-    .populate('whisper.to', 'username profile.displayName')
-    .sort({ createdAt: -1 })
-    .limit(limit);
-};
 
-// Static method to get pinned messages
-messageSchema.statics.getPinnedMessages = function(campaignId, room) {
-  return this.find({
-    campaign: campaignId,
-    room: room,
-    isPinned: true,
-    isDeleted: false
-  })
-    .populate('author', 'username profile.displayName profile.avatar')
-    .populate('character', 'name avatar')
-    .populate('pinnedBy', 'username profile.displayName')
-    .sort({ pinnedAt: -1 });
-};
-
-// Transform for JSON output
-messageSchema.set('toJSON', {
-  transform: function(doc, ret) {
-    if (ret.isDeleted && ret.type !== 'system') {
-      ret.content = '[Message deleted]';
-      delete ret.originalContent;
-    }
-    delete ret.__v;
-    return ret;
+  static getRecentMessages(campaignId, limit = 50) {
+    return this.findByCampaign(campaignId, limit, 0);
   }
-});
 
-module.exports = mongoose.model('Message', messageSchema);
+  static findByUser(userId, limit = 50) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT m.*, u.username, u.firstName, u.lastName, u.avatar,
+             ch.name as characterName, c.name as campaignName
+      FROM messages m
+      JOIN users u ON m.userId = u.id
+      JOIN campaigns c ON m.campaignId = c.id
+      LEFT JOIN characters ch ON m.characterId = ch.id
+      WHERE m.userId = ?
+      ORDER BY m.createdAt DESC
+      LIMIT ?
+    `);
+    return stmt.all(userId, limit);
+  }
+
+  static updateById(id, updateData) {
+    const db = getDB();
+    const fields = [];
+    const values = [];
+    
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(updateData[key]);
+      }
+    });
+    
+    if (fields.length === 0) return this.findById(id);
+    
+    values.push(new Date().toISOString()); // updatedAt (not in schema but good practice)
+    values.push(id);
+    
+    const stmt = db.prepare(`
+      UPDATE messages 
+      SET ${fields.join(', ')}
+      WHERE id = ?
+    `);
+    
+    stmt.run(...values.slice(0, -1), id); // Remove updatedAt since it's not in the schema
+    return this.findById(id);
+  }
+
+  static deleteById(id) {
+    const db = getDB();
+    const stmt = db.prepare('DELETE FROM messages WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  // Delete all messages in a campaign
+  static deleteByCampaign(campaignId) {
+    const db = getDB();
+    const stmt = db.prepare('DELETE FROM messages WHERE campaignId = ?');
+    const result = stmt.run(campaignId);
+    return result.changes;
+  }
+
+  // Check if user owns message
+  static isOwner(messageId, userId) {
+    const db = getDB();
+    const stmt = db.prepare('SELECT userId FROM messages WHERE id = ?');
+    const message = stmt.get(messageId);
+    return message && message.userId === userId;
+  }
+
+  // Get message count for campaign
+  static getCountByCampaign(campaignId) {
+    const db = getDB();
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM messages WHERE campaignId = ?');
+    const result = stmt.get(campaignId);
+    return result.count;
+  }
+
+  // Search messages in campaign
+  static searchInCampaign(campaignId, searchTerm, limit = 20) {
+    const db = getDB();
+    const stmt = db.prepare(`
+      SELECT m.*, u.username, u.firstName, u.lastName, u.avatar,
+             ch.name as characterName
+      FROM messages m
+      JOIN users u ON m.userId = u.id
+      LEFT JOIN characters ch ON m.characterId = ch.id
+      WHERE m.campaignId = ? AND m.content LIKE ?
+      ORDER BY m.createdAt DESC
+      LIMIT ?
+    `);
+    return stmt.all(campaignId, `%${searchTerm}%`, limit);
+  }
+
+  // Create system message
+  static createSystemMessage(campaignId, content) {
+    return this.create({
+      content,
+      type: 'system',
+      userId: null, // System messages don't have a user
+      campaignId,
+      isSystemMessage: true
+    });
+  }
+
+  // Get messages with pagination
+  static getPaginated(campaignId, page = 1, limit = 50) {
+    const offset = (page - 1) * limit;
+    const messages = this.findByCampaign(campaignId, limit, offset);
+    const totalCount = this.getCountByCampaign(campaignId);
+    
+    return {
+      messages,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
+        totalCount,
+        hasNext: offset + limit < totalCount,
+        hasPrev: page > 1
+      }
+    };
+  }
+}
+
+module.exports = Message;
