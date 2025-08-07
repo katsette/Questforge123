@@ -2,6 +2,9 @@
 set -e  # Exit on any error
 
 echo "🚀 Starting QuestForge build process..."
+echo "📍 Current directory: $(pwd)"
+echo "📂 Directory contents:"
+ls -la
 
 # Install root dependencies
 echo "📦 Installing root dependencies..."
@@ -9,8 +12,15 @@ npm install
 
 # Build frontend
 echo "🎨 Building frontend..."
+echo "📍 Changing to frontend directory..."
 cd frontend
+echo "📍 Frontend directory: $(pwd)"
+echo "📂 Frontend directory contents:"
+ls -la
+
+echo "📦 Installing frontend dependencies..."
 npm ci
+echo "🏗️ Building React app..."
 npm run build
 echo "✅ Frontend build complete"
 
@@ -26,6 +36,10 @@ if [ ! -f "build/index.html" ]; then
 fi
 
 echo "✅ Frontend build verification passed"
+echo "📂 Build folder contents:"
+ls -la build/
+echo "📄 Checking for index.html:"
+ls -la build/index.html
 cd ..
 
 # Install backend dependencies  
@@ -36,5 +50,8 @@ echo "✅ Backend dependencies installed"
 cd ..
 
 echo "🎉 Build process completed successfully!"
-echo "📁 Frontend build location: frontend/build/"
+echo "📁 Frontend build location: $(pwd)/frontend/build/"
+echo "📄 Index.html location: $(pwd)/frontend/build/index.html"
+echo "✅ Verifying final paths:"
+ls -la frontend/build/index.html
 echo "🚀 Ready for deployment!"

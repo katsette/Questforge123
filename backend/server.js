@@ -81,44 +81,66 @@ app.get('/api/health', (req, res) => {
 
 // Serve React frontend static files in production
 if (process.env.NODE_ENV === 'production') {
-  const buildPath = path.join(__dirname, '../frontend/build');
-  console.log(`🎨 Attempting to serve frontend from: ${buildPath}`);
-  
-  // Check if build folder exists
   const fs = require('fs');
-  if (fs.existsSync(buildPath)) {
-    console.log('✅ Frontend build folder found');
-    if (fs.existsSync(path.join(buildPath, 'index.html'))) {
-      console.log('✅ Frontend index.html found');
-    } else {
-      console.warn('❌ Frontend index.html NOT found');
+  
+  // Try multiple possible paths for the frontend build
+  const possiblePaths = [
+    path.join(__dirname, '../frontend/build'),
+    path.join(__dirname, '../../frontend/build'),
+    path.join(process.cwd(), 'frontend/build'),
+    path.join(__dirname, 'build')
+  ];
+  
+  let buildPath = null;
+  
+  console.log('🔍 Searching for frontend build in multiple locations:');
+  for (const testPath of possiblePaths) {
+    console.log(`  Testing: ${testPath}`);
+    if (fs.existsSync(testPath) && fs.existsSync(path.join(testPath, 'index.html'))) {
+      buildPath = testPath;
+      console.log(`  ✅ Found frontend build at: ${buildPath}`);
+      break;
     }
-  } else {
-    console.warn('❌ Frontend build folder NOT found');
   }
   
-  // Serve static files from React build
-  app.use(express.static(buildPath));
+  if (!buildPath) {
+    console.error('❌ Frontend build folder not found in any expected location');
+    console.log('Current working directory:', process.cwd());
+    console.log('__dirname:', __dirname);
+  }
   
-  // Handle React Router - send all non-api requests to React app
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-      const indexPath = path.join(buildPath, 'index.html');
-      console.log(`📄 Serving index.html for route: ${req.path}`);
-      
-      if (fs.existsSync(indexPath)) {
+  if (buildPath) {
+    // Serve static files from React build
+    app.use(express.static(buildPath));
+    
+    // Handle React Router - send all non-api requests to React app
+    app.get('*', (req, res) => {
+      if (!req.path.startsWith('/api')) {
+        const indexPath = path.join(buildPath, 'index.html');
+        console.log(`📄 Serving index.html for route: ${req.path}`);
         res.sendFile(indexPath);
-      } else {
-        console.error(`❌ Cannot find index.html at: ${indexPath}`);
-        res.status(404).json({
-          error: 'Frontend Not Found',
-          message: 'Frontend build files are not available',
-          buildPath: buildPath,
-          indexPath: indexPath
+      }
+    });
+  } else {
+    // Fallback when no build found
+    app.get('*', (req, res) => {
+      if (!req.path.startsWith('/api')) {
+        console.error('❌ Frontend build not available');
+        res.status(503).json({
+          error: 'Frontend Not Available',
+          message: 'Frontend build files could not be found',
+          suggestions: [
+            'Ensure the build process completed successfully',
+            'Check that frontend/build directory exists',
+            'Verify NODE_ENV is set to production'
+          ],
+          environment: process.env.NODE_ENV,
+          cwd: process.cwd(),
+          dirname: __dirname
         });
       }
-    }
-  });
+    });
+  }
 } else {
   // Development fallback
   app.get('*', (req, res) => {

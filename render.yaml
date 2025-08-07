@@ -3,7 +3,14 @@ services:
     name: questforge
     env: node
     plan: free
-    buildCommand: ./build.sh
+    buildCommand: |
+      echo "🔍 Debug: Render build environment"
+      echo "📍 PWD: $PWD"
+      echo "📂 Contents:"
+      ls -la
+      echo "🏗️ Running build script..."
+      chmod +x ./build.sh
+      ./build.sh
     startCommand: npm start
     envVars:
       - key: NODE_ENV
