@@ -9,7 +9,8 @@ import {
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   MoonIcon,
-  SunIcon
+  SunIcon,
+  CubeIcon
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { socketService } from '../../services/socketService';
@@ -25,6 +26,7 @@ const Layout = ({ children }) => {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Campaigns', href: '/campaigns', icon: UserGroupIcon },
     { name: 'Characters', href: '/characters', icon: UserIcon },
+    { name: 'Dice Roller', href: '/dice', icon: CubeIcon },
   ];
 
   const toggleDarkMode = () => {

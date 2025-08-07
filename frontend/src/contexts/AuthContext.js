@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { authService } from '../services/authService';
+import { authService, api } from '../services/authService';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -169,12 +169,50 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Authenticated fetch wrapper
+  const authFetch = async (url, options = {}) => {
+    try {
+      const apiInstance = await api();
+      const response = await apiInstance({
+        url: url.startsWith('/api') ? url.substring(4) : url, // Remove /api prefix if present
+        method: options.method || 'GET',
+        data: options.body ? JSON.parse(options.body) : undefined,
+        headers: {
+          ...options.headers
+        },
+        ...options
+      });
+      
+      // Return a response-like object for compatibility with fetch API
+      return {
+        ok: response.status >= 200 && response.status < 300,
+        status: response.status,
+        statusText: response.statusText,
+        json: async () => response.data,
+        text: async () => JSON.stringify(response.data)
+      };
+    } catch (error) {
+      // Handle axios errors and convert to fetch-like response
+      if (error.response) {
+        return {
+          ok: false,
+          status: error.response.status,
+          statusText: error.response.statusText,
+          json: async () => error.response.data,
+          text: async () => JSON.stringify(error.response.data)
+        };
+      }
+      throw error;
+    }
+  };
+
   const value = {
     ...state,
     login,
     register,
     logout,
-    updateProfile
+    updateProfile,
+    authFetch
   };
 
   return (

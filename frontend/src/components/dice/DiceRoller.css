@@ -1,0 +1,521 @@
+/* Dice Roller Main Container */
+.dice-roller {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dice-roller-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+.dice-roller-header h3 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.campaign-indicator {
+  background: #3498db;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+}
+
+/* Dice Form */
+.dice-form {
+  margin-bottom: 25px;
+}
+
+.formula-input-group,
+.reason-input-group {
+  margin-bottom: 15px;
+}
+
+.formula-input-group label,
+.reason-input-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.formula-input,
+.reason-input {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #bdc3c7;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.formula-input:focus,
+.reason-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.formula-help {
+  display: block;
+  color: #7f8c8d;
+  font-size: 0.9em;
+  margin-top: 5px;
+}
+
+/* Roll Options */
+.roll-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.advantage-controls {
+  display: flex;
+  gap: 15px;
+}
+
+.advantage-controls label,
+.privacy-option {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.advantage-controls input[type="checkbox"],
+.privacy-option input[type="checkbox"] {
+  margin: 0;
+  transform: scale(1.2);
+}
+
+/* Roll Button */
+.roll-button {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.roll-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2980b9, #1f5582);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.roll-button:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Messages */
+.error-message {
+  background: #e74c3c;
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.success-message {
+  background: #27ae60;
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 10px;
+  animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+/* Dice Presets */
+.dice-presets {
+  margin-bottom: 25px;
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.dice-presets h4 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.preset-section {
+  margin-bottom: 20px;
+}
+
+.preset-section:last-child {
+  margin-bottom: 0;
+}
+
+.preset-section h5 {
+  margin: 0 0 10px 0;
+  color: #34495e;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preset-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.basic-dice {
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+}
+
+.special-presets {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.preset-item {
+  display: flex;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.preset-button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.preset-button:hover:not(:disabled) {
+  background: #e3f2fd;
+}
+
+.preset-button:disabled {
+  background: #f5f5f5;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.special .preset-button {
+  text-align: left;
+  padding: 8px 12px;
+}
+
+.preset-name {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.preset-notation {
+  font-size: 0.8em;
+  color: #7f8c8d;
+}
+
+.quick-roll-button {
+  width: 30px;
+  border: none;
+  background: #3498db;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.quick-roll-button:hover:not(:disabled) {
+  background: #2980b9;
+}
+
+.quick-roll-button:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.preset-help {
+  margin-top: 15px;
+  text-align: center;
+  color: #7f8c8d;
+}
+
+.presets-loading,
+.presets-error {
+  text-align: center;
+  padding: 20px;
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+.presets-error {
+  color: #e74c3c;
+}
+
+/* Roll History */
+.roll-history {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.history-header h4 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.history-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.history-filter {
+  padding: 5px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.expand-button {
+  padding: 5px 12px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.expand-button:hover {
+  background: #2980b9;
+}
+
+.roll-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.roll-entry {
+  padding: 15px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s ease;
+}
+
+.roll-entry:hover {
+  background: #fafafa;
+}
+
+.roll-entry:last-child {
+  border-bottom: none;
+}
+
+.own-roll {
+  background: rgba(52, 152, 219, 0.05);
+  border-left: 4px solid #3498db;
+}
+
+.private-roll {
+  background: rgba(230, 126, 34, 0.05);
+  border-left: 4px solid #e67e22;
+}
+
+.advantage-roll {
+  background: rgba(46, 204, 113, 0.05);
+}
+
+.disadvantage-roll {
+  background: rgba(231, 76, 60, 0.05);
+}
+
+.nat-20 .result-value {
+  color: #27ae60;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(39, 174, 96, 0.3);
+}
+
+.nat-1 .result-value {
+  color: #e74c3c;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(231, 76, 60, 0.3);
+}
+
+.roll-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.roll-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.roll-icon {
+  font-size: 16px;
+}
+
+.roll-user {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.roll-time {
+  font-size: 0.85em;
+  color: #7f8c8d;
+}
+
+.roll-result {
+  display: flex;
+  align-items: center;
+}
+
+.result-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #2c3e50;
+  min-width: 40px;
+  text-align: center;
+  background: rgba(52, 152, 219, 0.1);
+  padding: 5px 10px;
+  border-radius: 20px;
+}
+
+.roll-details {
+  color: #34495e;
+}
+
+.roll-formula {
+  margin-bottom: 5px;
+}
+
+.roll-reason {
+  font-weight: normal;
+  font-style: italic;
+  color: #7f8c8d;
+}
+
+.roll-breakdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+  color: #7f8c8d;
+}
+
+.breakdown-label {
+  font-weight: 500;
+}
+
+.individual-rolls {
+  font-family: monospace;
+  background: #f8f9fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.modifier {
+  font-weight: 600;
+  color: #3498db;
+}
+
+.advantage-indicator {
+  font-weight: 500;
+  color: #27ae60;
+}
+
+.no-rolls,
+.no-filtered-rolls {
+  text-align: center;
+  padding: 40px 20px;
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dice-roller {
+    padding: 15px;
+  }
+  
+  .dice-roller-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .roll-options {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .advantage-controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .basic-dice {
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  }
+  
+  .special-presets {
+    grid-template-columns: 1fr;
+  }
+  
+  .history-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .roll-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .roll-breakdown {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+}

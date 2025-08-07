@@ -15,9 +15,9 @@ import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import CampaignsPage from './pages/CampaignsPage';
 import CampaignDetailPage from './pages/CampaignDetailPage';
-import CharactersPage from './pages/CharactersPage';
 import CharacterDetailPage from './pages/CharacterDetailPage';
 import ProfilePage from './pages/ProfilePage';
+import DiceRollerPage from './pages/DiceRollerPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -126,21 +126,21 @@ function App() {
               }
             />
             <Route
-              path="/characters"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <CharactersPage />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/characters/:id"
               element={
                 <ProtectedRoute>
                   <Layout>
                     <CharacterDetailPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dice"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DiceRollerPage />
                   </Layout>
                 </ProtectedRoute>
               }
