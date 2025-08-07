@@ -11,7 +11,8 @@ class SocketService {
       return this.socket;
     }
 
-    const SERVER_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const SERVER_URL = process.env.REACT_APP_API_URL || 
+      (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000');
 
     this.socket = io(SERVER_URL, {
       auth: {

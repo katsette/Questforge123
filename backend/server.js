@@ -24,8 +24,45 @@ const app = express();
 const server = http.createServer(app);
 
 // CORS configuration
+const getAllowedOrigins = () => {
+  const origins = [];
+  
+  // Add environment-specified frontend URL
+  if (process.env.FRONTEND_URL) {
+    origins.push(process.env.FRONTEND_URL);
+  }
+  
+  // Add localhost for development
+  if (process.env.NODE_ENV === 'development') {
+    origins.push('http://localhost:3000');
+    origins.push('http://localhost:3001');
+  }
+  
+  // For production, allow the same origin (since frontend is served by same server)
+  if (process.env.NODE_ENV === 'production') {
+    // Allow same-origin requests
+    origins.push(null); // null means same origin
+  }
+  
+  console.log('🌐 Allowed CORS origins:', origins);
+  return origins;
+};
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    const allowedOrigins = getAllowedOrigins();
+    
+    // Allow same-origin requests (when origin is undefined/null)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes(null)) {
+      return callback(null, true);
+    }
+    
+    console.warn(`CORS blocked origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
