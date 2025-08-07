@@ -7,25 +7,23 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// Generate JWT token
+const { getJWTSecret } = require('../utils/jwtSecret');
+
+// Generate JWT token with layered security
 const generateToken = (userId) => {
-  let secret = process.env.JWT_SECRET;
+  const { secret, type } = getJWTSecret();
   
-  // Fallback for missing JWT_SECRET
-  if (!secret) {
-    console.error('⚠️  JWT_SECRET environment variable not set, using fallback');
-    if (process.env.NODE_ENV === 'production') {
-      // In production, we need a consistent secret across restarts
-      // Use a combination of fixed string and service info
-      const crypto = require('crypto');
-      const baseString = 'questforge-prod-fallback-' + (process.env.RENDER_SERVICE_ID || 'unknown');
-      secret = crypto.createHash('sha256').update(baseString).digest('hex');
-      console.warn('🔐 Generated consistent production JWT secret from service info');
-    } else {
-      // Development fallback
-      secret = 'dev-fallback-secret-not-for-production-' + Date.now();
-      console.warn('🔐 Using development fallback JWT secret');
-    }
+  // Log the type of secret being used
+  switch (type) {
+    case 'combined':
+      console.log('🔐 Using combined JWT secret (manual + auto-generated)');
+      break;
+    case 'manual':
+      console.log('🔑 Using manual JWT_SECRET');
+      break;
+    case 'fallback':
+      console.warn('⚠️  JWT_SECRET not set, using auto-generated fallback');
+      break;
   }
   
   return jwt.sign({ id: userId }, secret, {
