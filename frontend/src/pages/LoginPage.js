@@ -74,6 +74,7 @@ const LoginPage = () => {
                 {...register('login', {
                   required: 'Username or email is required'
                 })}
+                id="login"
                 type="text"
                 autoComplete="username"
                 className={`input-primary bg-white/10 border-white/20 text-white placeholder-gray-400 ${
@@ -96,6 +97,7 @@ const LoginPage = () => {
                   {...register('password', {
                     required: 'Password is required'
                   })}
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   className={`input-primary bg-white/10 border-white/20 text-white placeholder-gray-400 pr-10 ${

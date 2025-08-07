@@ -101,6 +101,7 @@ const RegisterPage = () => {
                     message: 'Username can only contain letters, numbers, and underscores'
                   }
                 })}
+                id="username"
                 type="text"
                 autoComplete="username"
                 className={`input-primary bg-white/10 border-white/20 text-white placeholder-gray-400 ${
@@ -126,6 +127,7 @@ const RegisterPage = () => {
                     message: 'Please enter a valid email address'
                   }
                 })}
+                id="email"
                 type="email"
                 autoComplete="email"
                 className={`input-primary bg-white/10 border-white/20 text-white placeholder-gray-400 ${
@@ -150,6 +152,7 @@ const RegisterPage = () => {
                     message: 'Display name must be less than 50 characters'
                   }
                 })}
+                id="displayName"
                 type="text"
                 className={`input-primary bg-white/10 border-white/20 text-white placeholder-gray-400 ${
                   errors.displayName ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
@@ -175,6 +178,7 @@ const RegisterPage = () => {
                       message: 'Password must be at least 6 characters'
                     }
                   })}
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   className={`input-primary bg-white/10 border-white/20 text-white placeholder-gray-400 pr-10 ${
@@ -206,6 +210,7 @@ const RegisterPage = () => {
                   validate: value =>
                     value === watchPassword || 'Passwords do not match'
                 })}
+                id="confirmPassword"
                 type="password"
                 autoComplete="new-password"
                 className={`input-primary bg-white/10 border-white/20 text-white placeholder-gray-400 ${
