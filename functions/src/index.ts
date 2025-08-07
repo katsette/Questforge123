@@ -1,5 +1,3 @@
-Import function triggers from their respective submodules:
- 
 import { setGlobalOptions } from "firebase-functions";
 
 // Start writing functions
