@@ -71,6 +71,7 @@ backend/uploads/*
 backend/logs/
 backend/.env
 backend/dist/
+backend/.dev-jwt-secret
 
 # Frontend specific
 frontend/build/

@@ -24,7 +24,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: JWT_SECRET
-        generateValue: true
+        value: questforge_jwt_secret_2024_production_v1_do_not_change
       - key: JWT_EXPIRES_IN
         value: "7d"
       - key: RATE_LIMIT_WINDOW_MS

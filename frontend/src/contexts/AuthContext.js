@@ -82,9 +82,14 @@ export const AuthProvider = ({ children }) => {
             }
           });
         })
-        .catch(() => {
+        .catch((error) => {
+          console.log('Token verification failed:', error.response?.data?.message || error.message);
           localStorage.removeItem('token');
           dispatch({ type: 'LOGOUT' });
+          // Show a subtle notification that user needs to log in again
+          if (error.response?.status === 401) {
+            toast.error('Your session has expired. Please log in again.');
+          }
         })
         .finally(() => {
           dispatch({ type: 'SET_LOADING', payload: false });
