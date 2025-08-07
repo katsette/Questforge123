@@ -137,8 +137,42 @@
     }
   }
 
-  /* Prevent horizontal scrolling issues */
+  /* Prevent horizontal scrolling issues and improve layout */
   .main-content {
-    @apply min-w-0 flex-1;
+    @apply min-w-0 flex-1 w-full;
+  }
+
+  /* Fix responsive grid scaling issues */
+  @media (max-width: 640px) {
+    .max-w-7xl {
+      @apply max-w-full;
+    }
+    
+    /* Ensure cards don't overflow on small screens */
+    .card {
+      @apply w-full min-w-0;
+    }
+    
+    /* Fix grid spacing on mobile */
+    .grid {
+      @apply gap-3;
+    }
+  }
+
+  /* Improve medium screen responsiveness */
+  @media (min-width: 641px) and (max-width: 1023px) {
+    .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 {
+      @apply grid-cols-2;
+    }
+  }
+
+  /* Fix overflow and layout issues */
+  .min-h-screen {
+    @apply overflow-x-hidden;
+  }
+
+  /* Ensure proper flex layout */
+  .flex-1 {
+    @apply min-w-0;
   }
 }
