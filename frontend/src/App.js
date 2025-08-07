@@ -15,6 +15,7 @@ import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import CampaignsPage from './pages/CampaignsPage';
 import CampaignDetailPage from './pages/CampaignDetailPage';
+import CharactersPage from './pages/CharactersPage';
 import CharacterDetailPage from './pages/CharacterDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import DiceRollerPage from './pages/DiceRollerPage';
@@ -121,6 +122,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <CampaignDetailPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/characters"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CharactersPage />
                   </Layout>
                 </ProtectedRoute>
               }
